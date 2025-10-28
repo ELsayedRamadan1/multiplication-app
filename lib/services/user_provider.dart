@@ -33,7 +33,7 @@ class UserProvider extends ChangeNotifier {
     try {
       _currentUser = await _authService.getCurrentUser();
     } catch (e) {
-      print('Error loading current user: $e');
+      print('حدث خطأ أثناء تحميل المستخدم الحالي: $e');
       _currentUser = null;
     }
 
@@ -48,7 +48,6 @@ class UserProvider extends ChangeNotifier {
     try {
       User? user = await _authService.loginUser(email);
       if (user != null) {
-        // Reload current user data to ensure we have the latest data
         User? currentUser = await _authService.getCurrentUser();
         _currentUser = currentUser ?? user;
         _isLoading = false;
@@ -56,7 +55,7 @@ class UserProvider extends ChangeNotifier {
         return true;
       }
     } catch (e) {
-      print('Login error: $e');
+      print('خطأ أثناء تسجيل الدخول: $e');
     }
 
     _isLoading = false;
@@ -86,7 +85,7 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('Registration error: $e');
+      print('حدث خطأ أثناء التسجيل: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -114,14 +113,12 @@ class UserProvider extends ChangeNotifier {
       subjectScores: updatedScores,
     );
 
-    // Update current user immediately
     _currentUser = updatedUser;
-
-    // Save to persistent storage immediately
     await _authService.updateUser(updatedUser);
 
     notifyListeners();
   }
+
   Future<List<CustomAssignment>> getTeacherAssignments() async {
     if (!isTeacher || _currentUser == null) return [];
     return await _assignmentService.getAssignmentsByTeacher(_currentUser!.id);
@@ -146,7 +143,7 @@ class UserProvider extends ChangeNotifier {
     DateTime? dueDate,
   }) async {
     if (!isTeacher || _currentUser == null) {
-      throw Exception('Only teachers can create assignments');
+      throw Exception('فقط المعلمون يمكنهم إنشاء المهام');
     }
 
     final assignment = CustomAssignment(
@@ -163,11 +160,10 @@ class UserProvider extends ChangeNotifier {
 
     await _assignmentService.saveAssignment(assignment);
 
-    // Send notifications to assigned students
     if (assignedStudentIds.isNotEmpty) {
       await sendNotificationToStudents(
-        title: 'New Assignment: ${assignment.title}',
-        message: 'You have been assigned a new quiz. Check your assignments!',
+        title: 'مهمة جديدة: ${assignment.title}',
+        message: 'لقد تم تعيين اختبار جديد لك، تحقق من المهام الآن!',
         studentIds: assignedStudentIds,
         assignmentId: assignment.id,
       );
@@ -194,10 +190,7 @@ class UserProvider extends ChangeNotifier {
     );
 
     await _assignmentService.saveQuizResult(result);
-
-    // Also update user score for backward compatibility
     await updateUserScore(score, subject: 'custom_assignment_$assignmentId');
-
     notifyListeners();
   }
 
@@ -236,7 +229,7 @@ class UserProvider extends ChangeNotifier {
         users.where((user) => user.role == UserRole.student).toList());
   }
 
-  // Notification methods
+  // دوال الإشعارات
   Future<List<NotificationModel>> getUserNotifications() async {
     if (_currentUser == null) return [];
     return await _notificationService.getNotificationsForUser(_currentUser!.id);
@@ -273,16 +266,44 @@ class UserProvider extends ChangeNotifier {
   }
 
   String getUserDisplayName() {
-    return _currentUser?.name ?? 'Guest User';
+    return _currentUser?.name ?? 'مستخدم زائر';
   }
 
   String getUserInitials() {
-    if (_currentUser?.name == null) return 'GU';
+    if (_currentUser?.name == null) return 'ZZ';
     List<String> parts = _currentUser!.name.split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
     return _currentUser!.name.substring(0, 2).toUpperCase();
+  }
+
+  // Update user's avatar
+  Future<bool> updateUserAvatar(String avatarPath) async {
+    if (_currentUser == null) return false;
+    
+    try {
+      await _authService.updateUserAvatar(_currentUser!.id, avatarPath);
+      
+      // Update local user data
+      _currentUser = User(
+        id: _currentUser!.id,
+        name: _currentUser!.name,
+        email: _currentUser!.email,
+        role: _currentUser!.role,
+        avatarPath: avatarPath,
+        createdAt: _currentUser!.createdAt,
+        totalScore: _currentUser!.totalScore,
+        totalQuizzesCompleted: _currentUser!.totalQuizzesCompleted,
+        subjectScores: _currentUser!.subjectScores,
+      );
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error updating user avatar: $e');
+      return false;
+    }
   }
 
   Widget getUserAvatar({double radius = 20}) {

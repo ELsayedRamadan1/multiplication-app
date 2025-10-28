@@ -27,7 +27,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notifications'),
+        title: const Text('الإشعارات'),
         backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
             ? Colors.black
             : Colors.blue.shade800,
@@ -36,7 +36,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           TextButton(
             onPressed: _markAllAsRead,
             child: const Text(
-              'Mark All Read',
+              'تحديد الكل كمقروء',
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -64,8 +64,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 if (snapshot.hasError) {
                   return const Center(
                     child: Text(
-                      'Error loading notifications',
-                      style: const TextStyle(color: Colors.red),
+                      'حدث خطأ أثناء تحميل الإشعارات',
+                      style: TextStyle(color: Colors.red),
                     ),
                   );
                 }
@@ -75,9 +75,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 if (notifications.isEmpty) {
                   return const Center(
                     child: Text(
-                      'No notifications yet.\nCheck back later!',
+                      'لا توجد إشعارات بعد.\nتحقق لاحقًا!',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   );
                 }
@@ -118,17 +118,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         trailing: notification.isRead
                             ? null
                             : Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
                         onTap: () {
                           userProvider.markNotificationAsRead(notification.id);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Notification marked as read')),
+                            const SnackBar(content: Text('تم تحديد الإشعار كمقروء')),
                           );
                         },
                       ),
@@ -175,11 +175,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
-        return '${difference.inMinutes} ${'minutes ago'}';
+        return 'منذ ${difference.inMinutes} دقيقة';
       }
-      return '${difference.inHours} ${'hours ago'}';
+      return 'منذ ${difference.inHours} ساعة';
     } else if (difference.inDays == 1) {
-      return 'Yesterday';
+      return 'أمس';
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }

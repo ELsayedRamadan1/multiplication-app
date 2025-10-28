@@ -24,15 +24,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
   String? _errorMessage;
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: const Text('إنشاء حساب'),
         backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
             ? Colors.black
             : Colors.blue.shade800,
@@ -107,11 +102,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                     items: const [
                       DropdownMenuItem(
                         value: UserRole.student,
-                        child: Text('Student'),
+                        child: Text('طالب'),
                       ),
                       DropdownMenuItem(
                         value: UserRole.teacher,
-                        child: Text('Teacher'),
+                        child: Text('معلم'),
                       ),
                     ],
                     onChanged: (value) {
@@ -127,8 +122,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    hintText: 'Enter your full name',
+                    labelText: 'الاسم الكامل',
+                    hintText: 'أدخل اسمك الكامل',
                     prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -145,8 +140,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
-                    hintText: 'Enter your email',
+                    labelText: 'البريد الإلكتروني',
+                    hintText: 'أدخل بريدك الإلكتروني',
                     prefixIcon: const Icon(Icons.email),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -198,20 +193,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            'Create Account',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : const Text(
+                      'إنشاء الحساب',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -238,7 +233,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error selecting avatar: $e')),
+        SnackBar(content: Text('حدث خطأ أثناء اختيار الصورة: $e')),
       );
     }
   }
@@ -246,7 +241,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
   Future<void> _register() async {
     if (_nameController.text.isEmpty || _emailController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Please fill in all fields';
+        _errorMessage = 'يرجى تعبئة جميع الحقول';
       });
       return;
     }
@@ -271,7 +266,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
         );
       } else {
         setState(() {
-          _errorMessage = 'Registration failed. Please try again.';
+          _errorMessage = 'فشل التسجيل. يرجى المحاولة مرة أخرى.';
         });
       }
     } catch (e) {

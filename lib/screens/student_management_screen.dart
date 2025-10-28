@@ -42,7 +42,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   Future<void> _addStudent(String name, String email) async {
     if (name.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        SnackBar(content: Text('الرجاء ملء جميع الحقول')),
       );
       return;
     }
@@ -56,7 +56,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       bool exists = allUsers.any((user) => user.email == email);
       if (exists) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Email already exists')),
+          SnackBar(content: Text('البريد الإلكتروني مستخدم مسبقًا')),
         );
         return;
       }
@@ -76,11 +76,11 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       await _loadStudents();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Student added successfully')),
+        SnackBar(content: Text('تمت إضافة الطالب بنجاح')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding student' + ': $e')),
+        SnackBar(content: Text('حدث خطأ أثناء إضافة الطالب' + ': $e')),
       );
     }
   }
@@ -92,14 +92,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Add Student'),
+        title: Text('إضافة طالب'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
               decoration: InputDecoration(
-                labelText: 'Student Name',
+                labelText: 'اسم الطالب',
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -107,7 +107,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             TextField(
               controller: emailController,
               decoration: InputDecoration(
-                labelText: 'Email Address',
+                labelText: 'البريد الإلكتروني',
                 border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.emailAddress,
@@ -117,14 +117,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
+            child: Text('إلغاء'),
           ),
           ElevatedButton(
             onPressed: () {
               _addStudent(nameController.text.trim(), emailController.text.trim());
               Navigator.of(context).pop();
             },
-            child: Text('Add Student'),
+            child: Text('إضافة طالب'),
           ),
         ],
       ),
@@ -137,22 +137,22 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Add Students'),
+        title: Text('إضافة طلاب'),
         content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Enter student information (Name, Email) one per line:'),
-              Text('Example:'),
-              Text('John Doe, john@example.com', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('أدخل معلومات الطلاب (الاسم، البريد الإلكتروني) سطرًا لكل طالب:'),
+              Text('مثال:'),
+              Text('أحمد محمد, ahmed@example.com', style: const TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 16),
               TextField(
                 controller: studentsController,
                 decoration: InputDecoration(
-                  labelText: 'Students List',
+                  labelText: 'قائمة الطلاب',
                   border: const OutlineInputBorder(),
-                  hintText: 'John Doe, john@example.com\nJane Smith, jane@example.com',
+                  hintText: 'أحمد محمد, ahmed@example.com\nسارة علي, sara@example.com',
                 ),
                 maxLines: 8,
               ),
@@ -162,14 +162,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
+            child: Text('إلغاء'),
           ),
           ElevatedButton(
             onPressed: () async {
               await _bulkAddStudents(studentsController.text);
               Navigator.of(context).pop();
             },
-            child: Text('Add Students'),
+            child: Text('إضافة الطلاب'),
           ),
         ],
       ),
@@ -197,7 +197,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     if (addedCount > 0) {
       await _loadStudents();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$addedCount students added successfully')),
+        SnackBar(content: Text('تمت إضافة $addedCount طالب بنجاح')),
       );
     }
   }
@@ -206,7 +206,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Students'),
+        title: const Text('الطلاب'),
         backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
             ? Colors.black
             : Colors.green.shade800,
@@ -215,17 +215,17 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _showAddStudentDialog,
-            tooltip: 'Add Student',
+            tooltip: 'إضافة طالب',
           ),
           IconButton(
             icon: const Icon(Icons.people_outline),
             onPressed: _showBulkAddDialog,
-            tooltip: 'Bulk Add Students',
+            tooltip: 'إضافة طلاب متعددين',
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadStudents,
-            tooltip: 'Refresh',
+            tooltip: 'تحديث',
           ),
         ],
       ),
@@ -244,7 +244,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             : _students.isEmpty
                 ? Center(
                     child: Text(
-                      'No students found.\nAdd some students to get started!',
+                      'لا يوجد طلاب مسجلين.\nقم بإضافة طلاب للبدء!',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
@@ -275,7 +275,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             children: [
                               Text(student.email),
                               Text(
-                                '${'ID'}: ${student.id.substring(0, 8)}...',
+                                'الرقم التعريفي: ${student.id.substring(0, 8)}...',
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: Colors.grey.shade500,
@@ -292,13 +292,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             itemBuilder: (context) => [
                               PopupMenuItem(
                                 value: 'delete',
-                                child: Text('Delete Student'),
+                                child: Text('حذف الطالب'),
                               ),
                             ],
                           ),
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${'Student Information'}: ${student.name} - ${student.email}')),
+                              SnackBar(content: Text('تفاصيل الطالب: ${student.name} - ${student.email}')),
                             );
                           },
                         ),
@@ -313,12 +313,12 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete Student'),
-        content: Text('Are you sure you want to delete ${student.name}?'),
+        title: Text('حذف الطالب'),
+        content: Text('هل أنت متأكد من حذف الطالب ${student.name}؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel'),
+            child: Text('إلغاء'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),

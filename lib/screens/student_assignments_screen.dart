@@ -34,7 +34,7 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Assignments'),
+        title: Text('واجباتي'),
         backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
             ? Colors.black
             : Colors.blue.shade800,
@@ -43,7 +43,7 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadAssignments,
-            tooltip: 'Refresh',
+            tooltip: 'تحديث',
           ),
         ],
       ),
@@ -60,7 +60,7 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
         child: _assignments.isEmpty
             ? Center(
                 child: Text(
-                  'No assignments available.\nCheck back later!',
+                  'لايوجد واجبات متاحة.\nافحص مرة اخري!',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 18, color: Colors.grey),
                 ),
@@ -79,7 +79,7 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${assignment.questions.length} questions'),
+                          Text('${assignment.questions.length} الاسئلة'),
                           if (assignment.description != null && assignment.description!.isNotEmpty)
                             Text(
                               assignment.description!,
@@ -100,7 +100,7 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
                       trailing: IconButton(
                         icon: const Icon(Icons.play_arrow, color: Colors.green),
                         onPressed: () => _startAssignment(assignment),
-                        tooltip: 'Start Assignment',
+                        tooltip: 'ابدا الواجب',
                       ),
                       onTap: () => _showAssignmentDetails(assignment),
                     ),
@@ -121,12 +121,12 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (assignment.description != null && assignment.description!.isNotEmpty)
-              Text('Description: ${assignment.description!}'),
-            Text('Questions: ${assignment.questions.length}'),
-            Text('Teacher: ${assignment.teacherName}'),
-            Text('Due Date: ${assignment.dueDate ?? 'No due date'}'),
+              Text('الوصف: ${assignment.description!}'),
+            Text('الاسئلة: ${assignment.questions.length}'),
+            Text('المعلم: ${assignment.teacherName}'),
+            Text('تاريخ الاسنحقاق : ${assignment.dueDate ?? 'No due date'}'),
             const SizedBox(height: 16),
-            Text('Questions Preview', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('معاينة السؤال', style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Container(
               height: 150,
@@ -143,20 +143,20 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
               ),
             ),
             if (assignment.questions.length > 3)
-              Text('... and ${assignment.questions.length - 3} more questions'),
+              Text('... و ${assignment.questions.length - 3} اسئلة اكثر'),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Close'),
+            child: Text('اغلق'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               _startAssignment(assignment);
             },
-            child: Text('Start Assignment'),
+            child: Text('ابدا الواجب'),
           ),
         ],
       ),
@@ -169,7 +169,7 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
       MaterialPageRoute(
         builder: (context) => CustomQuizScreen(
           assignment: assignment,
-          studentName: Provider.of<UserProvider>(context, listen: false).currentUser?.name ?? 'Student',
+          studentName: Provider.of<UserProvider>(context, listen: false).currentUser?.name ?? 'الطالب',
         ),
       ),
     );

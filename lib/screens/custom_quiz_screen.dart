@@ -56,13 +56,11 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
         Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
 
     if (widget.assignment != null) {
-      // Use assignment questions
       _assignmentQuestions = widget.assignment!.questions;
       _totalQuestions = _assignmentQuestions.length;
       _currentQuestion = _assignmentQuestions[0];
       _currentQuestionIndex = 0;
     } else {
-      // Use general custom questions
       _loadCustomQuestions();
     }
     _animationController.forward();
@@ -82,7 +80,6 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
 
   void _generateNewQuestion() {
     if (widget.assignment != null) {
-      // Assignment mode - go to next question in sequence
       if (_currentQuestionIndex < _assignmentQuestions.length - 1) {
         setState(() {
           _currentQuestionIndex++;
@@ -94,7 +91,6 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
         });
       }
     } else {
-      // General custom questions mode
       if (_customQuestions.isEmpty) return;
 
       setState(() {
@@ -127,27 +123,24 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
   void _finishQuiz() async {
     if (_currentQuestion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No questions available')),
+        const SnackBar(content: Text('لا توجد أسئلة متاحة')),
       );
       return;
     }
 
-    // Save quiz results
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+    UserProvider userProvider = Provider.of<UserProvider>(
+        context, listen: false);
 
     if (widget.assignment != null) {
-      // Save as custom assignment result
       List<QuestionResult> questionResults = [];
 
-      // Create question results based on current progress
-      for (int i = 0; i <= _currentQuestionIndex && i < _assignmentQuestions.length; i++) {
-        // For simplicity, assume all questions were answered correctly up to current point
-        // In a real implementation, you'd track each answer individually
+      for (int i = 0; i <= _currentQuestionIndex &&
+          i < _assignmentQuestions.length; i++) {
         questionResults.add(QuestionResult(
           questionText: _assignmentQuestions[i].question,
           correctAnswer: _assignmentQuestions[i].correctAnswer,
-          userAnswer: _assignmentQuestions[i].correctAnswer, // Placeholder
-          isCorrect: i < _currentQuestionIndex ? true : false, // Placeholder logic
+          userAnswer: _assignmentQuestions[i].correctAnswer,
+          isCorrect: i < _currentQuestionIndex ? true : false,
         ));
       }
 
@@ -158,15 +151,14 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Assignment completed! Score: $_score/${_assignmentQuestions.length}')),
+        SnackBar(content: Text(
+            'تم إنهاء الواجب! نتيجتك: $_score/${_assignmentQuestions.length}')),
       );
     } else {
-      // Save as regular custom quiz
       if (userProvider.isLoggedIn) {
         await userProvider.updateUserScore(_score, subject: 'custom_quiz');
       }
 
-      // Also save to student service for backward compatibility
       StudentService service = StudentService();
       StudentData student = StudentData(
         name: widget.studentName,
@@ -177,7 +169,8 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
       await service.saveStudent(student);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Quiz completed! Score: $_score/$_totalQuestions')),
+        SnackBar(content: Text(
+            'تم إنهاء الاختبار! نتيجتك: $_score/$_totalQuestions')),
       );
     }
 
@@ -190,8 +183,10 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
       appBar: AppBar(
         title: Text(widget.assignment != null
             ? widget.assignment!.title
-            : 'Custom Questions Quiz'),
-        backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+            : 'اختبار الأسئلة المخصصة'),
+        backgroundColor: Provider
+            .of<ThemeProvider>(context)
+            .themeMode == ThemeMode.dark
             ? Colors.black
             : Colors.purple.shade800,
         elevation: 0,
@@ -201,7 +196,9 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+            colors: Provider
+                .of<ThemeProvider>(context)
+                .themeMode == ThemeMode.dark
                 ? [Colors.grey.shade900, Colors.black]
                 : [Colors.purple.shade50, Colors.white],
           ),
@@ -209,14 +206,14 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
         child: widget.assignment != null
             ? _buildAssignmentQuiz()
             : _customQuestions.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No custom questions available.\nAsk your teacher to create some!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                  )
-                : _buildGeneralQuiz(),
+            ? const Center(
+          child: Text(
+            'لا توجد أسئلة مخصصة متاحة.\nاطلب من معلمك إنشاء بعضها!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        )
+            : _buildGeneralQuiz(),
       ),
     );
   }
@@ -225,7 +222,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
     if (_currentQuestion == null) {
       return const Center(
         child: Text(
-          'No assignment questions available',
+          'لا توجد أسئلة في هذا الواجب',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 18, color: Colors.grey),
         ),
@@ -239,7 +236,6 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              // Assignment info
               Container(
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 20),
@@ -251,17 +247,20 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                 child: Column(
                   children: [
                     Text(
-                      '${'Assignment'}: ${widget.assignment!.title}',
+                      'الواجب: ${widget.assignment!.title}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      '${'Question of'} ${_currentQuestionIndex + 1} of ${_assignmentQuestions.length}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      'السؤال رقم ${_currentQuestionIndex +
+                          1} من ${_assignmentQuestions.length}',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade600),
                     ),
                     if (widget.assignment!.description != null)
                       Text(
                         widget.assignment!.description!,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600),
                       ),
                   ],
                 ),
@@ -270,12 +269,14 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 500),
                 child: Text(
-                  'Score: $_score / ${_assignmentQuestions.length}',
+                  'النتيجة: $_score / ${_assignmentQuestions.length}',
                   key: ValueKey<int>(_score + _assignmentQuestions.length),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.purpleAccent
                         : Colors.purple,
                   ),
@@ -287,7 +288,9 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.grey.shade800
                         : Colors.white,
                     borderRadius: BorderRadius.circular(15),
@@ -301,7 +304,8 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                   ),
                   child: Column(
                     children: [
-                      if (_currentQuestion!.imagePath != null && _currentQuestion!.imagePath!.isNotEmpty) ...[
+                      if (_currentQuestion!.imagePath != null &&
+                          _currentQuestion!.imagePath!.isNotEmpty) ...[
                         Container(
                           height: 150,
                           width: double.infinity,
@@ -324,7 +328,8 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: const Center(
-                                    child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                                    child: Icon(Icons.broken_image, size: 40,
+                                        color: Colors.grey),
                                   ),
                                 );
                               },
@@ -338,7 +343,9 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                          color: Provider
+                              .of<ThemeProvider>(context)
+                              .themeMode == ThemeMode.dark
                               ? Colors.white
                               : Colors.black,
                         ),
@@ -347,7 +354,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                       if (_currentQuestion!.explanation != null) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Hint: ${_currentQuestion!.explanation!}',
+                          'تلميح: ${_currentQuestion!.explanation!}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -364,48 +371,38 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
               TextField(
                 controller: _controller,
                 decoration: InputDecoration(
-                  labelText: 'Your Answer',
+                  labelText: 'إجابتك',
                   labelStyle: TextStyle(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.white70
                         : Colors.black54,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                      color: Provider
+                          .of<ThemeProvider>(context)
+                          .themeMode == ThemeMode.dark
                           ? Colors.white70
-                          : Colors.purple,
-                      width: 2,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                          ? Colors.white70
-                          : Colors.purple,
-                      width: 2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                          ? Colors.purpleAccent
                           : Colors.purple,
                       width: 2,
                     ),
                   ),
                   filled: true,
-                  fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                  fillColor: Provider
+                      .of<ThemeProvider>(context)
+                      .themeMode == ThemeMode.dark
                       ? Colors.grey.shade800
                       : Colors.white,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 12),
                 ),
                 style: TextStyle(
-                  color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                  color: Provider
+                      .of<ThemeProvider>(context)
+                      .themeMode == ThemeMode.dark
                       ? Colors.white
                       : Colors.black,
                 ),
@@ -419,78 +416,61 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                   padding: const EdgeInsets.symmetric(
                       horizontal: 32, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.purpleAccent
                         : Colors.purple,
                     borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                            ? Colors.purpleAccent
-                            : Colors.purple).withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                      ),
-                    ],
                   ),
-                  child: Text(
-                    'Check Answer',
-                    style: const TextStyle(color: Colors.white,
+                  child: const Text(
+                    'تحقق من الإجابة',
+                    style: TextStyle(color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
               if (_isCorrect != null)
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Column(
-                    key: ValueKey<bool>(_isCorrect!),
-                    children: [
-                      const SizedBox(height: 16),
-                      Text(
-                        _isCorrect!
-                            ? 'Correct! +1 point'
-                            : 'Wrong! Correct: ${_currentQuestion!.correctAnswer}',
-                        style: TextStyle(
-                          color: _isCorrect! ? Colors.green : Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Text(
+                      _isCorrect!
+                          ? 'صحيح! +1 نقطة'
+                          : 'إجابة خاطئة: ${_currentQuestion!.correctAnswer}',
+                      style: TextStyle(
+                        color: _isCorrect! ? Colors.green : Colors.red,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      if (_isCorrect!)
-                        ScaleTransition(
-                          scale: _fadeAnimation,
-                          child: Text('🎊 Great Job!',
-                              style: const TextStyle(fontSize: 18)),
-                        ),
-                    ],
-                  ),
+                    ),
+                    if (_isCorrect!)
+                      Text(
+                          '🎉 أداء رائع!', style: const TextStyle(fontSize: 18)),
+                  ],
                 ),
               const SizedBox(height: 16),
               InkWell(
-                onTap: _currentQuestionIndex < _assignmentQuestions.length - 1 ? _generateNewQuestion : _finishQuiz,
+                onTap: _currentQuestionIndex < _assignmentQuestions.length - 1
+                    ? _generateNewQuestion
+                    : _finishQuiz,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 32, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.blueAccent
                         : Colors.blue,
                     borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                            ? Colors.blueAccent
-                            : Colors.blue).withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                      ),
-                    ],
                   ),
                   child: Text(
-                    _currentQuestionIndex < _assignmentQuestions.length - 1 ? 'Next Question' : 'Finish Assignment',
+                    _currentQuestionIndex < _assignmentQuestions.length - 1
+                        ? 'السؤال التالي'
+                        : 'إنهاء الواجب',
                     style: const TextStyle(color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold),
@@ -515,12 +495,14 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 500),
                 child: Text(
-                  'Score: $_score / $_totalQuestions',
+                  'النتيجة: $_score / $_totalQuestions',
                   key: ValueKey<int>(_score + _totalQuestions),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.purpleAccent
                         : Colors.purple,
                   ),
@@ -532,21 +514,17 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    color: Provider
+                        .of<ThemeProvider>(context)
+                        .themeMode == ThemeMode.dark
                         ? Colors.grey.shade800
                         : Colors.white,
                     borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.purple.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                      ),
-                    ],
                   ),
                   child: Column(
                     children: [
-                      if (_currentQuestion!.imagePath != null && _currentQuestion!.imagePath!.isNotEmpty) ...[
+                      if (_currentQuestion!.imagePath != null &&
+                          _currentQuestion!.imagePath!.isNotEmpty)
                         Container(
                           height: 150,
                           width: double.infinity,
@@ -554,53 +532,31 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                             border: Border.all(color: Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: Image.file(
-                              File(_currentQuestion!.imagePath!),
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  child: const Center(
-                                    child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                                  ),
-                                );
-                              },
-                            ),
+                          child: Image.file(
+                            File(_currentQuestion!.imagePath!),
+                            fit: BoxFit.cover,
                           ),
                         ),
-                        const SizedBox(height: 15),
-                      ],
+                      const SizedBox(height: 15),
                       Text(
                         _currentQuestion!.question,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                          color: Provider
+                              .of<ThemeProvider>(context)
+                              .themeMode == ThemeMode.dark
                               ? Colors.white
                               : Colors.black,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      if (_currentQuestion!.explanation != null) ...[
-                        const SizedBox(height: 8),
+                      if (_currentQuestion!.explanation != null)
                         Text(
-                          'Hint: ${_currentQuestion!.explanation!}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                            fontStyle: FontStyle.italic,
-                          ),
-                          textAlign: TextAlign.center,
+                          'ملاحظة: ${_currentQuestion!.explanation!}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey
+                              .shade600, fontStyle: FontStyle.italic),
                         ),
-                      ],
                     ],
                   ),
                 ),
@@ -609,134 +565,62 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
               TextField(
                 controller: _controller,
                 decoration: InputDecoration(
-                  labelText: 'Your Answer',
-                  labelStyle: TextStyle(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                        ? Colors.white70
-                        : Colors.black54,
-                  ),
+                  labelText: 'إجابتك',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                          ? Colors.white70
-                          : Colors.purple,
-                      width: 2,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                          ? Colors.white70
-                          : Colors.purple,
-                      width: 2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                          ? Colors.purpleAccent
-                          : Colors.purple,
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? Colors.grey.shade800
-                      : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                ),
-                style: TextStyle(
-                  color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? Colors.white
-                      : Colors.black,
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               InkWell(
                 onTap: _checkAnswer,
-                borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 32, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                        ? Colors.purpleAccent
-                        : Colors.purple,
+                    color: Colors.purple,
                     borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                            ? Colors.purpleAccent
-                            : Colors.purple).withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                      ),
-                    ],
                   ),
-                  child: Text(
-                    'Check Answer',
-                    style: const TextStyle(color: Colors.white,
+                  child: const Text(
+                    'تحقق من الإجابة',
+                    style: TextStyle(color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
               if (_isCorrect != null)
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Column(
-                    key: ValueKey<bool>(_isCorrect!),
-                    children: [
-                      const SizedBox(height: 16),
-                      Text(
-                        _isCorrect!
-                            ? 'Correct! +1 point'
-                            : 'Wrong! Correct: ${_currentQuestion!.correctAnswer}',
-                        style: TextStyle(
-                          color: _isCorrect! ? Colors.green : Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Text(
+                      _isCorrect!
+                          ? 'صحيح! +1 نقطة'
+                          : 'إجابة خاطئة: ${_currentQuestion!.correctAnswer}',
+                      style: TextStyle(
+                        color: _isCorrect! ? Colors.green : Colors.red,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      if (_isCorrect!)
-                        ScaleTransition(
-                          scale: _fadeAnimation,
-                          child: Text('🎊 Great Job!',
-                              style: const TextStyle(fontSize: 18)),
-                        ),
-                    ],
-                  ),
+                    ),
+                    if (_isCorrect!)
+                      Text(
+                          '🎉 أداء رائع!', style: const TextStyle(fontSize: 18)),
+                  ],
                 ),
               const SizedBox(height: 16),
               InkWell(
                 onTap: _generateNewQuestion,
-                borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 32, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                        ? Colors.blueAccent
-                        : Colors.blue,
+                    color: Colors.blue,
                     borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                            ? Colors.blueAccent
-                            : Colors.blue).withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                      ),
-                    ],
                   ),
-                  child: Text(
-                    'Next Question',
-                    style: const TextStyle(color: Colors.white,
+                  child: const Text(
+                    'السؤال التالي',
+                    style: TextStyle(color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold),
                   ),
@@ -747,9 +631,11 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                 onPressed: _finishQuiz,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
                 ),
-                child: Text('Finish Quiz', style: const TextStyle(fontSize: 14)),
+                child: const Text(
+                    'إنهاء الاختبار', style: TextStyle(fontSize: 14)),
               ),
             ],
           ),
@@ -757,7 +643,6 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
       ),
     );
   }
-
   @override
   void dispose() {
     _controller.dispose();

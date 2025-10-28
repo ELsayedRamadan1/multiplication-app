@@ -89,7 +89,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Quiz completed! Final Score: $_score/$_totalQuestions')),
+      SnackBar(content: Text('تم الانتهاء من الاختبار! النتيجة النهائية: $_score/$_totalQuestions')),
     );
   }
 
@@ -97,7 +97,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Quiz'),
+        title: Text('اختبار جدول الضرب'),
         backgroundColor: Provider
             .of<ThemeProvider>(context)
             .themeMode == ThemeMode.dark
@@ -126,7 +126,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 500),
                   child: Text(
-                    'Score: $_score / $_totalQuestions',
+                    'سؤال ${_totalQuestions + 1}',
                     key: ValueKey<int>(_score + _totalQuestions),
                     style: TextStyle(
                       fontSize: 20,
@@ -143,7 +143,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Text(
-                    'What is ${_currentQuestion.a} x ${_currentQuestion.b}?',
+                    'ما هو حاصل ضرب ${_currentQuestion.a} × ${_currentQuestion.b}؟',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -159,7 +159,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 TextField(
                   controller: _controller,
                   decoration: InputDecoration(
-                    labelText: 'Your Answer',
+                    labelText: 'أدخل إجابتك',
                     labelStyle: TextStyle(
                       color: Provider
                           .of<ThemeProvider>(context)
@@ -245,7 +245,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       ],
                     ),
                     child: Text(
-                      'Check',
+                      'تأكيد',
                       style: const TextStyle(color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.bold),
@@ -261,8 +261,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         const SizedBox(height: 16),
                         Text(
                           _isCorrect!
-                              ? 'Correct! +1 point'
-                              : 'Correct: ${_currentQuestion.correctAnswer}',
+                              ? 'إجابة صحيحة! +1 نقطة'
+                              : 'إجابة خاطئة! الإجابة الصحيحة هي ${_currentQuestion.correctAnswer}.',
                           style: TextStyle(
                             color: _isCorrect! ? Colors.green : Colors.red,
                             fontSize: 16,
@@ -272,8 +272,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         if (_isCorrect!)
                           ScaleTransition(
                             scale: _fadeAnimation,
-                            child: Text('🎊 Great Job!',
-                                style: const TextStyle(fontSize: 18)),
+                            child: Text('ممتاز!'),
                           ),
                       ],
                     ),
@@ -305,7 +304,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       ],
                     ),
                     child: Text(
-                      'Next Question',
+                      'السؤال التالي',
                       style: const TextStyle(color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.bold),
@@ -318,7 +317,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
-                  child: Text('Finish Quiz', style: const TextStyle(fontSize: 14)),
+                  child: Text('إنهاء الاختبار', style: const TextStyle(fontSize: 14)),
                 ),
               ],
             ),

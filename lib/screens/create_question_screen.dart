@@ -91,7 +91,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Create New Question'),
+          title: const Text('إنشاء سؤال جديد'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -99,17 +99,17 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 DropdownButtonFormField<QuestionType>(
                   value: _selectedType,
                   decoration: const InputDecoration(
-                    labelText: 'Question Type',
+                    labelText: 'نوع السؤال',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
                     DropdownMenuItem(
                       value: QuestionType.customText,
-                      child: Text('Text Question'),
+                      child: Text('سؤال نصي'),
                     ),
                     DropdownMenuItem(
                       value: QuestionType.customImage,
-                      child: Text('Image Question'),
+                      child: Text('سؤال بصري'),
                     ),
                   ],
                   onChanged: (value) {
@@ -122,9 +122,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 TextField(
                   controller: _questionController,
                   decoration: const InputDecoration(
-                    labelText: 'Question Text',
+                    labelText: 'نص السؤال',
                     border: OutlineInputBorder(),
-                    hintText: 'e.g., What is 5 + 3?',
+                    hintText: 'مثال: ما ناتج 5 + 3؟',
                   ),
                   maxLines: 2,
                 ),
@@ -132,9 +132,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 TextField(
                   controller: _answerController,
                   decoration: const InputDecoration(
-                    labelText: 'Correct Answer',
+                    labelText: 'الإجابة الصحيحة',
                     border: OutlineInputBorder(),
-                    hintText: 'Enter the correct number',
+                    hintText: 'أدخل الرقم الصحيح',
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -142,9 +142,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 TextField(
                   controller: _explanationController,
                   decoration: const InputDecoration(
-                    labelText: 'Explanation (Optional)',
+                    labelText: 'الشرح (اختياري)',
                     border: OutlineInputBorder(),
-                    hintText: 'Explain how to solve this problem',
+                    hintText: 'اشرح كيفية حل هذه المسألة',
                   ),
                   maxLines: 2,
                 ),
@@ -195,7 +195,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       setState(() {}); // Refresh dialog state
                     },
                     icon: const Icon(Icons.image),
-                    label: Text(_selectedImage != null ? 'Change Image' : 'Select Image'),
+                    label: Text(_selectedImage != null ? 'تغيير الصورة' : 'اختر صورة'),
                   ),
                 ],
               ],
@@ -204,13 +204,13 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('إلغاء'),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (_questionController.text.isEmpty || _answerController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill in all required fields')),
+                    const SnackBar(content: Text('الرجاء ملء جميع الحقول المطلوبة')),
                   );
                   return;
                 }
@@ -218,7 +218,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 int? answer = int.tryParse(_answerController.text);
                 if (answer == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid number for the answer')),
+                    const SnackBar(content: Text('الرجاء إدخال رقم صحيح للإجابة')),
                   );
                   return;
                 }
@@ -233,7 +233,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 } else {
                   if (_selectedImage == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please select an image for image questions')),
+                      const SnackBar(content: Text('الرجاء اختيار صورة للأسئلة البصرية')),
                     );
                     return;
                   }
@@ -256,10 +256,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Question created successfully!')),
+                  const SnackBar(content: Text('تم إنشاء السؤال بنجاح!')),
                 );
               },
-              child: const Text('Create'),
+              child: const Text('إنشاء'),
             ),
           ],
         ),
@@ -278,7 +278,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Create Assignment'),
+          title: const Text('إنشاء واجب'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -286,36 +286,36 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 TextField(
                   controller: _assignmentTitleController,
                   decoration: const InputDecoration(
-                    labelText: 'Assignment Title',
+                    labelText: 'عنوان الواجب',
                     border: OutlineInputBorder(),
-                    hintText: 'e.g., Week 1 Math Assignment',
+                    hintText: 'مثال: الواجب الأول في الرياضيات',
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _assignmentDescriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Description (Optional)',
+                    labelText: 'وصف الواجب (اختياري)',
                     border: OutlineInputBorder(),
-                    hintText: 'Brief description of the assignment',
+                    hintText: 'وصف مختصر للواجب',
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
-                const Text('Assign to Students:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('اختر الطلاب:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: _showStudentSelectionDialog,
                   icon: const Icon(Icons.people),
                   label: Text(_selectedStudentNames.isEmpty
-                      ? 'Select Students'
-                      : 'Selected: ${_selectedStudentNames.length} students'),
+                    ? 'اختر الطلاب'
+                    : 'تم اختيار: ${_selectedStudentNames.length} طلاب'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _selectedStudentNames.isEmpty ? Colors.grey : Colors.blue,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Select Questions:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('اختر الأسئلة:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Container(
                   height: 200,
@@ -325,7 +325,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: _customQuestions.isEmpty
-                      ? const Center(child: Text('No questions available'))
+                      ? const Center(child: Text('لا توجد أسئلة متاحة', textDirection: TextDirection.rtl))
                       : ListView.builder(
                           itemCount: _customQuestions.length,
                           itemBuilder: (context, index) {
@@ -337,8 +337,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                 question.question,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
+                                textDirection: TextDirection.rtl,
                               ),
-                              subtitle: Text('Answer: ${question.correctAnswer}'),
+                              subtitle: Text('الإجابة: ${question.correctAnswer}', textDirection: TextDirection.rtl),
                               value: isSelected,
                               onChanged: (bool? value) {
                                 setState(() {
@@ -361,13 +362,13 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
+              child: const Text('إلغاء'),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (_assignmentTitleController.text.isEmpty || _selectedStudentIds.isEmpty || _selectedStudentNames.isEmpty || _selectedQuestionIds.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill title and select students and questions')),
+                    const SnackBar(content: Text('الرجاء إدخال العنوان واختيار الطلاب والأسئلة')),
                   );
                   return;
                 }
@@ -391,15 +392,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   await _loadAssignments();
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Assignment created successfully!')),
+                    const SnackBar(content: Text('تم إنشاء الواجب بنجاح!')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error creating assignment: $e')),
+                    SnackBar(content: Text('حدث خطأ أثناء إنشاء الواجب: $e')),
                   );
                 }
               },
-              child: const Text('Create Assignment'),
+              child: const Text('إنشاء واجب'),
             ),
           ],
         ),
@@ -408,12 +409,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   }
 
   void _showStudentSelectionDialog() {
-    // For now, use all registered users as students
+    // استخدام جميع المستخدمين المسجلين كطلاب
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Select Students'),
+          title: const Text('اختر الطلاب'),
           content: SizedBox(
             width: double.maxFinite,
             child: FutureBuilder(
@@ -485,17 +486,18 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Teacher Tools'),
+          title: const Text('أدوات المعلم'),
           backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
               ? Colors.black
               : Colors.orange.shade800,
           elevation: 0,
           bottom: TabBar(
+            isScrollable: true,
             tabs: [
-              Tab(text: 'Questions'),
-              Tab(text: 'Assignments'),
-              Tab(text: 'Students'),
-              Tab(text: 'Progress'),
+              Tab(text: 'الأسئلة'),
+              Tab(text: 'الواجبات'),
+              Tab(text: 'الطلاب'),
+              Tab(text: 'التقدم'),
             ],
           ),
           actions: [
@@ -505,7 +507,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 await _loadQuestions();
                 await _loadAssignments();
               },
-              tooltip: 'Refresh',
+              tooltip: 'تحديث',
             ),
           ],
         ),
@@ -513,6 +515,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
           children: [
             // Questions Tab
             Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -529,7 +532,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _showCreateQuestionDialog,
                       icon: const Icon(Icons.add),
-                      label: const Text('Create Question'),
+                      label: const Text('إنشاء سؤال جديد'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -541,9 +544,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     child: _customQuestions.isEmpty
                         ? const Center(
                             child: Text(
-                              'No questions available',
+                              'لا توجد أسئلة متاحة',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 16, color: Colors.grey),
+                              textDirection: TextDirection.rtl,
                             ),
                           )
                         : ListView.builder(
@@ -564,18 +568,20 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                   subtitle: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Answer: ${question.correctAnswer}'),
+                                      Text('الإجابة: ${question.correctAnswer}'),
                                       if (question.explanation != null)
                                         Text(
-                                          'Explanation: ${question.explanation!}',
+                                          'الشرح: ${question.explanation!}',
                                           style: const TextStyle(fontStyle: FontStyle.italic),
+                                          textDirection: TextDirection.rtl,
                                         ),
                                       Text(
-                                        'Question Type: ${question.type == QuestionType.customText ? 'Text' : 'Image'}',
+                                        'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey.shade600,
                                         ),
+                                        textDirection: TextDirection.rtl,
                                       ),
                                     ],
                                   ),
@@ -595,6 +601,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
             // Assignments Tab
             Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -691,17 +698,47 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       : [Colors.green.shade50, Colors.white],
                 ),
               ),
-              child: const Center(
-                child: Text(
-                  'Students Tab Content\n(Management functionality)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
+              child: FutureBuilder(
+                future: _getAllStudents(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  List<User> students = snapshot.data as List<User>;
+                  
+                  return students.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'لا يوجد طلاب مسجلين',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            textDirection: TextDirection.rtl,
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            User student = students[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(student.name[0].toUpperCase()),
+                                ),
+                                title: Text(student.name),
+                                subtitle: Text(student.email),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                              ),
+                            );
+                          },
+                        );
+                },
               ),
             ),
 
             // Progress Tab
             Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -711,13 +748,58 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       : [Colors.orange.shade50, Colors.white],
                 ),
               ),
-              child: const Center(
-                child: Text(
-                  'Progress Tab Content\n(Assignment progress tracking)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ),
+              child: _assignments.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'لا توجد واجبات متاحة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _assignments.length,
+                      itemBuilder: (context, index) {
+                        CustomAssignment assignment = _assignments[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: ExpansionTile(
+                            title: Text(assignment.title),
+                            subtitle: Text('عدد الطلاب: ${assignment.assignedStudentIds.length}'),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'الطلاب المكلفين:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...assignment.assignedStudentNames.map((name) => 
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                        child: Text('• $name', textDirection: TextDirection.rtl),
+                                      )
+                                    ).toList(),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'عدد الأسئلة: ${assignment.questions.length}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -732,11 +814,11 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
       await _loadAssignments();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Assignment deleted successfully!')),
+        SnackBar(content: Text('تم حذف الواجب بنجاح!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting assignment: $e')),
+        SnackBar(content: Text('حدث خطأ أثناء حذف الواجب: $e')),
       );
     }
   }
@@ -745,13 +827,13 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     _assignmentTitleController.text = assignment.title;
     _assignmentDescriptionController.text = assignment.description ?? '';
 
-    // Pre-select current students and questions
+    // تحديد الطلاب والأسئلة الحالية مسبقًا
     _selectedStudentIds.clear();
     _selectedStudentNames.clear();
     _selectedQuestionIds.clear();
 
-    // Note: This is a simplified version. In a real app, you would need to
-    // load the assignment details from the service
+    // ملاحظة: هذه نسخة مبسطة. في التطبيق الفعلي، ستحتاج إلى
+    // تحميل تفاصيل الواجب من الخدمة
     _assignmentTitleController.text = assignment.title;
     _assignmentDescriptionController.text = assignment.description ?? '';
 
@@ -759,7 +841,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Edit Assignment'),
+          title: const Text('تعديل الواجب'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -767,18 +849,18 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 TextField(
                   controller: _assignmentTitleController,
                   decoration: const InputDecoration(
-                    labelText: 'Assignment Title',
+                    labelText: 'عنوان الواجب',
                     border: OutlineInputBorder(),
-                    hintText: 'e.g., Week 1 Math Assignment',
+                    hintText: 'مثال: واجب الأسبوع الأول في الرياضيات',
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _assignmentDescriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Description (Optional)',
+                    labelText: 'الوصف (اختياري)',
                     border: OutlineInputBorder(),
-                    hintText: 'Brief description of the assignment',
+                    hintText: 'وصف موجز للواجب',
                   ),
                   maxLines: 2,
                 ),

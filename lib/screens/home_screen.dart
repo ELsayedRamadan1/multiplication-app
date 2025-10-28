@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:multiplication_table_app/screens/profile_screen.dart';
 import 'package:multiplication_table_app/screens/student_assignments_screen.dart';
 import 'package:provider/provider.dart';
 import '../models/multiplication_table_model.dart';
@@ -8,7 +7,6 @@ import '../services/user_provider.dart';
 import '../theme_provider.dart';
 import 'create_question_screen.dart';
 import 'custom_quiz_screen.dart';
-import 'login_screen.dart';
 import 'quiz_screen.dart';
 import 'table_screen.dart';
 import 'teacher_dashboard.dart';
@@ -41,23 +39,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Welcome'),
+            title: Center(
+              child: Text('مرحباً بك',style: TextStyle(fontSize: 22),),
+            ),
+            centerTitle: true,
             backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
                 ? Colors.black
                 : (userProvider.isTeacher ? Colors.orange.shade800 : Colors.blue.shade800),
             elevation: 0,
-            leading: userProvider.getUserAvatar(radius: 20),
             actions: [
-              IconButton(
-                icon: Icon(
-                  Provider.of<ThemeProvider>(context).themeMode == ThemeMode.light
-                      ? Icons.dark_mode
-                      : Icons.light_mode,
-                ),
-                onPressed: () {
-                  Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
-                },
-              ),
               IconButton(
                 icon: const Icon(Icons.settings),
                 onPressed: () {
@@ -66,17 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(builder: (context) => const SettingsScreen()),
                   );
                 },
-                tooltip: 'Settings',
-              ),
-              IconButton(
-                icon: const Icon(Icons.person),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                  );
-                },
-                tooltip: 'Profile',
+                tooltip: 'الإعدادات',
               ),
               if (!userProvider.isTeacher) // Show notifications only for students
                 Consumer<UserProvider>(
@@ -99,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   MaterialPageRoute(builder: (context) => const NotificationsScreen()),
                                 );
                               },
-                              tooltip: 'Notifications',
+                              tooltip: 'الإشعارات',
                             ),
                             if (unreadCount > 0)
                               Positioned(
@@ -130,41 +110,41 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () async {
-                  // Show confirmation dialog
-                  bool? confirmLogout = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text('Logout'),
-                      content: Text('Are you sure you want to delete?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          child: Text('Logout'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirmLogout == true) {
-                    await userProvider.logout();
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      (Route<dynamic> route) => false,
-                    );
-                  }
-                },
-                tooltip: 'Logout',
-              ),
+              // IconButton(
+              //   icon: const Icon(Icons.logout),
+              //   onPressed: () async {
+              //     // Show confirmation dialog
+              //     bool? confirmLogout = await showDialog<bool>(
+              //       context: context,
+              //       builder: (context) => AlertDialog(
+              //         title: Text('تسجيل الخروج'),
+              //         content: Text('هل أنت متأكد من أنك تريد تسجيل الخروج؟'),
+              //         actions: [
+              //           TextButton(
+              //             onPressed: () => Navigator.of(context).pop(false),
+              //             child: Text('إلغاء'),
+              //           ),
+              //           ElevatedButton(
+              //             onPressed: () => Navigator.of(context).pop(true),
+              //             style: ElevatedButton.styleFrom(
+              //               backgroundColor: Colors.red,
+              //             ),
+              //             child: Text('تسجيل الخروج'),
+              //           ),
+              //         ],
+              //       ),
+              //     );
+              //
+              //     if (confirmLogout == true) {
+              //       await userProvider.logout();
+              //       Navigator.of(context).pushAndRemoveUntil(
+              //         MaterialPageRoute(builder: (context) => const LoginScreen()),
+              //         (Route<dynamic> route) => false,
+              //       );
+              //     }
+              //   },
+              //   tooltip: 'تسجيل الخروج',
+              // ),
             ],
           ),
           body: Container(
@@ -205,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              userProvider.isTeacher ? 'Teacher Mode' : 'Student Mode',
+                              userProvider.isTeacher ? 'وضع المعلم' : 'وضع الطالب',
                               style: TextStyle(
                                 color: userProvider.isTeacher ? Colors.orange.shade700 : Colors.blue.shade700,
                                 fontWeight: FontWeight.bold,
@@ -229,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: Text('View Student Data', style: const TextStyle(fontSize: 14)),
+                          child: Text('عرض بيانات الطلاب', style: const TextStyle(fontSize: 14)),
                         ),
                         const SizedBox(height: 10),
                         ElevatedButton(
@@ -244,23 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: Text('Create Custom Questions', style: const TextStyle(fontSize: 14)),
+                          child: Text('إنشاء أسئلة مخصصة', style: const TextStyle(fontSize: 14)),
                         ),
                         const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => CustomQuizScreen(studentName: userProvider.currentUser?.name ?? '')),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: Text('Use Custom Questions', style: const TextStyle(fontSize: 14)),
-                        ),
                         const SizedBox(height: 24),
                       ],
 
@@ -310,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        userProvider.isTeacher ? 'Teacher Dashboard' : 'Multiplication Master',
+                        userProvider.isTeacher ? 'لوحة تحكم المعلم' : 'ماجستير الضرب',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -320,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        userProvider.isTeacher ? 'Manage Students and Create Questions' : 'Learn • Practice • Excel',
+                        userProvider.isTeacher ? 'إدارة الطلاب وإنشاء الأسئلة' : 'تعلم • ممارسة • التميز',
                         style: TextStyle(
                           fontSize: 14,
                           color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
@@ -332,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 24),
 
                       if (!userProvider.isTeacher) ...[
-                        Text('Multiplication Table', style: const TextStyle(fontSize: 16)),
+                        Text('جدول الضرب', style: const TextStyle(fontSize: 16)),
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
@@ -390,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                           icon: const Icon(Icons.list, size: 18),
-                          label: Text('View Multiplication Table'),
+                          label: Text('عرض جدول الضرب'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             backgroundColor: Colors.blue,
@@ -420,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                           icon: const Icon(Icons.quiz, size: 18),
-                          label: Text('Practice Quiz'),
+                          label: Text('الاختبار'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             backgroundColor: Colors.green,
@@ -437,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                           icon: const Icon(Icons.assignment, size: 18),
-                          label: Text('My Assignments'),
+                          label: Text('واجباتي'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             backgroundColor: Colors.purple,

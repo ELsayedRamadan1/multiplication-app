@@ -121,4 +121,40 @@ class AuthService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString(_currentUserKey, jsonEncode(user.toJson()));
   }
+
+  // Update user's avatar
+  Future<void> updateUserAvatar(String userId, String avatarPath) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<User> users = await getAllUsers();
+    
+    // Find and update the user
+    int userIndex = users.indexWhere((user) => user.id == userId);
+    if (userIndex != -1) {
+      User updatedUser = users[userIndex];
+      users[userIndex] = User(
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        avatarPath: avatarPath,
+        createdAt: updatedUser.createdAt,
+        totalScore: updatedUser.totalScore,
+        totalQuizzesCompleted: updatedUser.totalQuizzesCompleted,
+        subjectScores: updatedUser.subjectScores,
+      );
+      
+      // Save updated users list
+      await _saveAllUsers(users);
+      
+      // Update current user if it's the same user
+      String? currentUserJson = prefs.getString(_currentUserKey);
+      if (currentUserJson != null) {
+        Map<String, dynamic> currentUserData = jsonDecode(currentUserJson);
+        if (currentUserData['id'] == userId) {
+          currentUserData['avatarPath'] = avatarPath;
+          await prefs.setString(_currentUserKey, jsonEncode(currentUserData));
+        }
+      }
+    }
+  }
 }

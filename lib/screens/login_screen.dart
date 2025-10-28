@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   Future<void> _login() async {
     if (_emailController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter your email';
+        _errorMessage = 'الرجاء إدخال البريد الإلكتروني';
       });
       return;
     }
@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       );
     } else {
       setState(() {
-        _errorMessage = 'User not found. Please register first.';
+        _errorMessage = 'لم يتم العثور على المستخدم. الرجاء التسجيل أولاً.';
       });
     }
   }
@@ -141,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
                     // App Title
                     Text(
-                      'Multiplication Master',
+                      ' جدول الضرب',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -153,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Learn • Practice • Excel',
+                      'تعلم • ممارسة • تميز',
                       style: TextStyle(
                         fontSize: 16,
                         color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Welcome Back',
+                            'مرحباً بعودتك!',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -196,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Sign in to continue your learning journey',
+                            'سجل الدخول للمتابعة',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -208,8 +208,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           TextField(
                             controller: _emailController,
                             decoration: InputDecoration(
-                              labelText: 'Email Address',
-                              hintText: 'Enter your email',
+                              labelText: 'البريد الإلكتروني',
+                              hintText: 'أدخل بريدك الإلكتروني',
                               prefixIcon: const Icon(Icons.email),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -271,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       ),
                                     )
                                   : const Text(
-                                      'Sign In',
+                                      'تسجيل الدخول',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -287,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             children: [
                               Flexible(
                                 child: Text(
-                                  'Don\'t have an account?',
+                                  'ليس لديك حساب؟',
                                   style: TextStyle(
                                     color: Colors.grey.shade600,
                                   ),
@@ -297,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               TextButton(
                                 onPressed: _showRegistrationDialog,
                                 child: Text(
-                                  'Create Account',
+                                  'إنشاء حساب',
                                   style: TextStyle(
                                     color: Colors.blue,
                                     fontWeight: FontWeight.bold,
@@ -327,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           const Icon(Icons.info, color: Colors.amber),
                           const SizedBox(height: 8),
                           Text(
-                            'Demo Accounts',
+                            'حسابات تجريبية',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.amber.shade800,
@@ -335,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Enter any email to create a new account or login',
+                            'أدخل بريدك الإلكتروني لإنشاء حساب جديد أو تسجيل الدخول',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.amber.shade700,

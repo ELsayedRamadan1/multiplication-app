@@ -12,7 +12,7 @@ class TableScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Table of ${table.number}'),
+        title: Text('جدول ${table.number}'),
         backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
             ? Colors.black
             : Colors.blue.shade800,

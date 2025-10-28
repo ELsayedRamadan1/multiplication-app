@@ -36,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
     _animationController.forward();
 
-    // Navigate to appropriate screen after splash
+    // الانتقال إلى الشاشة المناسبة بعد شاشة البداية
     _navigateToNextScreen();
   }
 
@@ -81,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // App Logo
+                  // شعار التطبيق
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -129,9 +129,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                   const SizedBox(height: 32),
 
-                  // App Name
-                  Text(
-                    'Multiplication Master',
+                  // اسم التطبيق
+                  const Text(
+                    'جدول الضرب',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -142,9 +142,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                   const SizedBox(height: 16),
 
-                  // App Tagline
+                  // شعار التطبيق الفرعي
                   Text(
-                    'Learn • Practice • Excel',
+                    'تعلّم • تدرب • تفوق',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -154,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                   const SizedBox(height: 64),
 
-                  // Loading Indicator
+                  // مؤشر التحميل
                   SizedBox(
                     width: 40,
                     height: 40,
@@ -169,7 +169,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   const SizedBox(height: 16),
 
                   Text(
-                    'Loading...',
+                    'جاري التحميل...',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white.withOpacity(0.7),

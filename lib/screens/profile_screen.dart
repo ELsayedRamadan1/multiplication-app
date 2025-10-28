@@ -1,12 +1,30 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
+import '../services/auth_service.dart';
 import '../services/user_provider.dart';
-
 import '../theme_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isDarkMode = false;
+  File? _imageFile;
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  bool get _mounted => !_isDisposed;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
         if (!userProvider.isLoggedIn) {
           return const Scaffold(
             body: Center(
-              child: Text('Please login to view profile'),
+              child: Text('الرجاء تسجيل الدخول لعرض الملف الشخصي', textDirection: TextDirection.rtl),
             ),
           );
         }
@@ -24,7 +42,7 @@ class ProfileScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Profile'),
+            title: Text('الملف الشخصي'),
             backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
                 ? Colors.black
                 : Colors.blue.shade800,
@@ -68,12 +86,11 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 16),
 
                         // Name and Role
-                        Text(
+                        _buildEditableInfoRow(
+                          context,
+                          'الاسم',
                           user.name,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          onEdit: (value) => _updateUserInfo(context, 'name', value),
                         ),
                         const SizedBox(height: 4),
                         Container(
@@ -85,7 +102,7 @@ class ProfileScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            user.role == UserRole.teacher ? 'Teacher' : 'Student',
+                            user.role == UserRole.teacher ? 'معلم' : 'طالب',
                             style: TextStyle(
                               color: user.role == UserRole.teacher
                                   ? Colors.orange.shade700
@@ -95,12 +112,11 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        _buildEditableInfoRow(
+                          context,
+                          'البريد الإلكتروني',
                           user.email,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
+                          onEdit: (value) => _updateUserInfo(context, 'email', value),
                         ),
                       ],
                     ),
@@ -113,7 +129,7 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: _buildStatCard(
                           context,
-                          'Total Score',
+                          'النقاط الكلية',
                           user.totalScore.toString(),
                           Icons.star,
                           Colors.amber,
@@ -123,94 +139,13 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: _buildStatCard(
                           context,
-                          'Quizzes',
+                          'الاختبارات',
                           user.totalQuizzesCompleted.toString(),
                           Icons.quiz,
                           Colors.green,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Subject Scores
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                          ? Colors.grey.shade800
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          spreadRadius: 2,
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Subject Performance',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (user.subjectScores.isEmpty)
-                          Text(
-                            'No quiz results yet. Start practicing!',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
-                          )
-                        else
-                          ...user.subjectScores.entries.map((entry) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                                    ? Colors.grey.shade700
-                                    : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      entry.key.replaceAll('_', ' ').replaceAll('custom assignment', 'Assignment').toUpperCase(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                                            ? Colors.white
-                                            : Colors.black,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    '${entry.value} pts',
-                                    style: TextStyle(
-                                      color: entry.value > 5 ? Colors.green : Colors.orange,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -235,7 +170,7 @@ class ProfileScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Account Information',
+                          'معلومات الحساب',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -245,9 +180,9 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _buildInfoRow(context, 'Member Since', _formatDate(user.createdAt)),
+                        _buildInfoRow(context, 'عضو منذ', _formatDate(user.createdAt)),
                         const SizedBox(height: 8),
-                        _buildInfoRow(context, 'User ID', user.id),
+                        _buildInfoRow(context, 'رقم المستخدم', user.id),
                       ],
                     ),
                   ),
@@ -257,6 +192,58 @@ class ProfileScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEditableInfoRow(
+      BuildContext context,
+      String label,
+      String value, {
+        required Function(String) onEdit,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    style: const TextStyle(fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 18),
+                  onPressed: () {
+                    _showEditDialog(context, label, value, onEdit);
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -338,5 +325,72 @@ class ProfileScreen extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Future<void> _updateUserInfo(BuildContext context, String field, String newValue) async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUser = userProvider.currentUser;
+
+    if (currentUser == null) return;
+
+    try {
+      final updatedUser = currentUser.copyWith(
+        name: field == 'name' ? newValue : currentUser.name,
+        email: field == 'email' ? newValue : currentUser.email,
+      );
+
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.updateUser(updatedUser);
+
+      await userProvider.login(currentUser.email);
+
+      if (_mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث البيانات بنجاح')),
+        );
+      }
+    } catch (e) {
+      if (_mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ أثناء تحديث البيانات: $e')),
+        );
+      }
+    }
+  }
+
+  void _showEditDialog(
+      BuildContext context,
+      String label,
+      String currentValue,
+      Function(String) onSave,
+      ) {
+    final controller = TextEditingController(text: currentValue);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تعديل $label'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () {
+              onSave(controller.text);
+              Navigator.pop(context);
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
   }
 }
