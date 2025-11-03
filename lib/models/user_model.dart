@@ -13,6 +13,9 @@ class User {
   final int totalScore;
   final int totalQuizzesCompleted;
   final Map<String, int> subjectScores; // Track scores by subject/table
+  final String school;
+  final int grade; // 1-6 for grades 1 through 6
+  final int classNumber; // 1-10 for class numbers
 
   User({
     required this.id,
@@ -24,6 +27,9 @@ class User {
     this.totalScore = 0,
     this.totalQuizzesCompleted = 0,
     Map<String, int>? subjectScores,
+    required this.school,
+    required this.grade,
+    required this.classNumber,
   }) :
     createdAt = createdAt ?? DateTime.now(),
     subjectScores = subjectScores ?? {};
@@ -39,6 +45,9 @@ class User {
       'totalScore': totalScore,
       'totalQuizzesCompleted': totalQuizzesCompleted,
       'subjectScores': subjectScores,
+      'school': school,
+      'grade': grade,
+      'classNumber': classNumber,
     };
   }
 
@@ -52,7 +61,10 @@ class User {
       createdAt: DateTime.parse(json['createdAt']),
       totalScore: json['totalScore'] ?? 0,
       totalQuizzesCompleted: json['totalQuizzesCompleted'] ?? 0,
-      subjectScores: Map<String, int>.from(json['subjectScores'] ?? {}),
+      subjectScores: json['subjectScores'] != null ? Map<String, int>.from(json['subjectScores']) : null,
+      school: json['school'] ?? '',
+      grade: json['grade'] ?? 1,
+      classNumber: json['classNumber'] ?? 1,
     );
   }
 
@@ -64,6 +76,9 @@ class User {
     int? totalScore,
     int? totalQuizzesCompleted,
     Map<String, int>? subjectScores,
+    String? school,
+    int? grade,
+    int? classNumber,
   }) {
     return User(
       id: id,
@@ -75,6 +90,9 @@ class User {
       totalScore: totalScore ?? this.totalScore,
       totalQuizzesCompleted: totalQuizzesCompleted ?? this.totalQuizzesCompleted,
       subjectScores: subjectScores ?? this.subjectScores,
+      school: school ?? this.school,
+      grade: grade ?? this.grade,
+      classNumber: classNumber ?? this.classNumber,
     );
   }
 

@@ -342,7 +342,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.updateUser(updatedUser);
 
-      await userProvider.login(currentUser.email);
+      // Reload user data from Firestore
+      final updatedUserData = await authService.getCurrentUser();
+      if (updatedUserData != null) {
+        // The userProvider will automatically update via authStateChanges listener
+      }
 
       if (_mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

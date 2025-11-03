@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/question_model.dart';
 import '../models/user_model.dart';
@@ -10,9 +11,11 @@ import 'assignment_service.dart';
 import 'notification_service.dart';
 
 class UserProvider extends ChangeNotifier {
-  final AuthService _authService = AuthService();
+  final AuthService authService;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AssignmentService _assignmentService = AssignmentService();
   final NotificationService _notificationService = NotificationService();
+
   User? _currentUser;
   bool _isLoading = true;
 
@@ -22,8 +25,21 @@ class UserProvider extends ChangeNotifier {
   bool get isStudent => _currentUser?.role == UserRole.student;
   bool get isTeacher => _currentUser?.role == UserRole.teacher;
 
-  UserProvider() {
+  UserProvider({required this.authService}) {
     _initializeUser();
+    _listenToAuthChanges();
+  }
+
+  // الاستماع لتغييرات حالة المصادقة
+  void _listenToAuthChanges() {
+    authService.authStateChanges.listen((firebaseUser) async {
+      if (firebaseUser != null) {
+        _currentUser = await authService.getCurrentUser();
+      } else {
+        _currentUser = null;
+      }
+      notifyListeners();
+    });
   }
 
   Future<void> _initializeUser() async {
@@ -31,7 +47,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _currentUser = await _authService.getCurrentUser();
+      _currentUser = await authService.getCurrentUser();
     } catch (e) {
       print('حدث خطأ أثناء تحميل المستخدم الحالي: $e');
       _currentUser = null;
@@ -41,43 +57,81 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> login(String email) async {
+  // تسجيل الدخول بالإيميل والباسورد
+  Future<bool> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      User? user = await _authService.loginUser(email);
-      if (user != null) {
-        User? currentUser = await _authService.getCurrentUser();
-        _currentUser = currentUser ?? user;
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      }
+      User user = await authService.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _currentUser = user;
+      _isLoading = false;
+      notifyListeners();
+      return true;
     } catch (e) {
       print('خطأ أثناء تسجيل الدخول: $e');
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
     }
-
-    _isLoading = false;
-    notifyListeners();
-    return false;
   }
 
-  Future<bool> register({
-    required String name,
-    required String email,
+  // تسجيل الدخول بـ Google
+  Future<bool> signInWithGoogle({
     required UserRole role,
-    String? avatarPath,
+    String? school,
+    int? grade,
+    int? classNumber,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      User newUser = await _authService.registerUser(
+      User user = await authService.signInWithGoogle(
+        role: role,
+        school: school ?? '',
+        grade: grade ?? 1,
+        classNumber: classNumber ?? 1,
+      );
+      _currentUser = user;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('خطأ أثناء تسجيل الدخول بـ Google: $e');
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // التسجيل
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String password,
+    required UserRole role,
+    String? avatarPath,
+    String? school,
+    int? grade,
+    int? classNumber,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      User newUser = await authService.registerWithEmailAndPassword(
         name: name,
         email: email,
+        password: password,
         role: role,
         avatarPath: avatarPath,
+        school: school ?? '',
+        grade: grade ?? 1,
+        classNumber: classNumber ?? 1,
       );
 
       _currentUser = newUser;
@@ -88,16 +142,23 @@ class UserProvider extends ChangeNotifier {
       print('حدث خطأ أثناء التسجيل: $e');
       _isLoading = false;
       notifyListeners();
-      return false;
+      rethrow;
     }
   }
 
+  // تسجيل الخروج
   Future<void> logout() async {
-    await _authService.logoutUser();
+    await authService.signOut();
     _currentUser = null;
     notifyListeners();
   }
 
+  // إعادة تعيين كلمة المرور
+  Future<void> resetPassword(String email) async {
+    await authService.resetPassword(email);
+  }
+
+  // تحديث نقاط المستخدم
   Future<void> updateUserScore(int score, {String? subject}) async {
     if (_currentUser == null) return;
 
@@ -114,26 +175,30 @@ class UserProvider extends ChangeNotifier {
     );
 
     _currentUser = updatedUser;
-    await _authService.updateUser(updatedUser);
+    await authService.updateUser(updatedUser);
 
     notifyListeners();
   }
 
+  // الحصول على واجبات المعلم
   Future<List<CustomAssignment>> getTeacherAssignments() async {
     if (!isTeacher || _currentUser == null) return [];
     return await _assignmentService.getAssignmentsByTeacher(_currentUser!.id);
   }
 
+  // الحصول على واجبات الطالب
   Future<List<CustomAssignment>> getStudentAssignments() async {
     if (!isStudent || _currentUser == null) return [];
     return await _assignmentService.getAssignmentsForStudent(_currentUser!.id);
   }
 
+  // الحصول على الواجبات النشطة للطالب
   Future<List<CustomAssignment>> getActiveStudentAssignments() async {
     if (!isStudent || _currentUser == null) return [];
     return await _assignmentService.getActiveAssignmentsForStudent(_currentUser!.id);
   }
 
+  // إنشاء واجب
   Future<CustomAssignment> createAssignment({
     required String title,
     required List<Question> questions,
@@ -173,6 +238,7 @@ class UserProvider extends ChangeNotifier {
     return assignment;
   }
 
+  // حفظ نتيجة اختبار مخصص
   Future<void> saveCustomQuizResult({
     required String assignmentId,
     required List<QuestionResult> questionResults,
@@ -194,26 +260,34 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // الحصول على نتائج الواجب
   Future<List<CustomQuizResult>> getAssignmentResults(String assignmentId) async {
     return await _assignmentService.getResultsForAssignment(assignmentId);
   }
 
+  // الحصول على نتائج الطالب
   Future<List<CustomQuizResult>> getStudentResults() async {
     if (!isStudent || _currentUser == null) return [];
     return await _assignmentService.getResultsForStudent(_currentUser!.id);
   }
 
+  // الحصول على نتيجة واجب محدد للطالب
   Future<CustomQuizResult?> getAssignmentResultForStudent(String assignmentId) async {
     if (_currentUser == null) return null;
-    return await _assignmentService.getResultForAssignmentAndStudent(assignmentId, _currentUser!.id);
+    return await _assignmentService.getResultForAssignmentAndStudent(
+        assignmentId,
+        _currentUser!.id
+    );
   }
 
+  // تحديث حالة الواجب
   Future<void> updateAssignmentStatus(String assignmentId, bool isActive) async {
     if (!isTeacher) return;
     await _assignmentService.updateAssignmentStatus(assignmentId, isActive);
     notifyListeners();
   }
 
+  // حذف واجب
   Future<void> deleteAssignment(String assignmentId) async {
     if (!isTeacher) return;
     await _assignmentService.deleteAssignment(assignmentId);
@@ -224,8 +298,9 @@ class UserProvider extends ChangeNotifier {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }
 
+  // الحصول على جميع الطلاب
   Future<List<User>> getAllStudents() async {
-    return await _authService.getAllUsers().then((users) =>
+    return await authService.getAllUsers().then((users) =>
         users.where((user) => user.role == UserRole.student).toList());
   }
 
@@ -278,14 +353,13 @@ class UserProvider extends ChangeNotifier {
     return _currentUser!.name.substring(0, 2).toUpperCase();
   }
 
-  // Update user's avatar
+  // تحديث صورة المستخدم
   Future<bool> updateUserAvatar(String avatarPath) async {
     if (_currentUser == null) return false;
-    
+
     try {
-      await _authService.updateUserAvatar(_currentUser!.id, avatarPath);
-      
-      // Update local user data
+      await authService.updateUserAvatar(_currentUser!.id, avatarPath);
+
       _currentUser = User(
         id: _currentUser!.id,
         name: _currentUser!.name,
@@ -296,8 +370,11 @@ class UserProvider extends ChangeNotifier {
         totalScore: _currentUser!.totalScore,
         totalQuizzesCompleted: _currentUser!.totalQuizzesCompleted,
         subjectScores: _currentUser!.subjectScores,
+        school: _currentUser!.school,
+        grade: _currentUser!.grade,
+        classNumber: _currentUser!.classNumber,
       );
-      
+
       notifyListeners();
       return true;
     } catch (e) {
@@ -308,11 +385,20 @@ class UserProvider extends ChangeNotifier {
 
   Widget getUserAvatar({double radius = 20}) {
     if (_currentUser?.avatarPath != null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: FileImage(File(_currentUser!.avatarPath!)),
-        backgroundColor: Colors.grey.shade300,
-      );
+      // تحقق إذا كانت الصورة من Google أو محلية
+      if (_currentUser!.avatarPath!.startsWith('http')) {
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: NetworkImage(_currentUser!.avatarPath!),
+          backgroundColor: Colors.grey.shade300,
+        );
+      } else {
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: FileImage(File(_currentUser!.avatarPath!)),
+          backgroundColor: Colors.grey.shade300,
+        );
+      }
     }
 
     return CircleAvatar(

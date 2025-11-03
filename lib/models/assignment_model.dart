@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'question_model.dart';
 
 class CustomAssignment {
@@ -46,16 +45,27 @@ class CustomAssignment {
 
   factory CustomAssignment.fromJson(Map<String, dynamic> json) {
     return CustomAssignment(
-      id: json['id'],
-      teacherId: json['teacherId'],
-      teacherName: json['teacherName'],
-      assignedStudentIds: List<String>.from(json['assignedStudentIds']),
-      assignedStudentNames: List<String>.from(json['assignedStudentNames']),
-      questions: (json['questions'] as List).map((q) => Question.fromJson(q)).toList(),
-      title: json['title'],
+      id: json['id'] ?? '',
+      teacherId: json['teacherId'] ?? '',
+      teacherName: json['teacherName'] ?? '',
+      assignedStudentIds: (json['assignedStudentIds'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          [],
+      assignedStudentNames: (json['assignedStudentNames'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          [],
+      questions: (json['questions'] as List?)
+          ?.map((q) => Question.fromJson(Map<String, dynamic>.from(q)))
+          .toList() ??
+          [],
+      title: json['title'] ?? '',
       description: json['description'],
-      createdAt: DateTime.parse(json['createdAt']),
-      dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate']) : null,
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      dueDate: json['dueDate'] != null
+          ? DateTime.tryParse(json['dueDate'])
+          : null,
       isActive: json['isActive'] ?? true,
     );
   }
@@ -64,11 +74,41 @@ class CustomAssignment {
     return assignedStudentIds.contains(studentId);
   }
 
+  CustomAssignment copyWith({
+    String? id,
+    String? teacherId,
+    String? teacherName,
+    List<String>? assignedStudentIds,
+    List<String>? assignedStudentNames,
+    List<Question>? questions,
+    String? title,
+    String? description,
+    DateTime? createdAt,
+    DateTime? dueDate,
+    bool? isActive,
+  }) {
+    return CustomAssignment(
+      id: id ?? this.id,
+      teacherId: teacherId ?? this.teacherId,
+      teacherName: teacherName ?? this.teacherName,
+      assignedStudentIds: assignedStudentIds ?? List.from(this.assignedStudentIds),
+      assignedStudentNames: assignedStudentNames ?? List.from(this.assignedStudentNames),
+      questions: questions ?? List.from(this.questions),
+      title: title ?? this.title,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      dueDate: dueDate ?? this.dueDate,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   @override
   String toString() {
     return 'CustomAssignment(id: $id, title: $title, students: ${assignedStudentNames.length})';
   }
 }
+
+// ===================================================================
 
 class CustomQuizResult {
   final String assignmentId;
@@ -103,17 +143,27 @@ class CustomQuizResult {
 
   factory CustomQuizResult.fromJson(Map<String, dynamic> json) {
     return CustomQuizResult(
-      assignmentId: json['assignmentId'],
-      studentId: json['studentId'],
-      studentName: json['studentName'],
-      questionResults: (json['questionResults'] as List).map((q) => QuestionResult.fromJson(q)).toList(),
-      completedAt: DateTime.parse(json['completedAt']),
-      score: json['score'],
-      totalQuestions: json['totalQuestions'],
+      assignmentId: json['assignmentId'] ?? '',
+      studentId: json['studentId'] ?? '',
+      studentName: json['studentName'] ?? '',
+      questionResults: (json['questionResults'] as List?)
+          ?.map((q) =>
+          QuestionResult.fromJson(Map<String, dynamic>.from(q)))
+          .toList() ??
+          [],
+      completedAt: DateTime.tryParse(json['completedAt'] ?? '') ??
+          DateTime.now(),
+      score: (json['score'] is int)
+          ? json['score']
+          : int.tryParse(json['score'].toString()) ?? 0,
+      totalQuestions: (json['totalQuestions'] is int)
+          ? json['totalQuestions']
+          : int.tryParse(json['totalQuestions'].toString()) ?? 0,
     );
   }
 
-  double get percentage => totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+  double get percentage =>
+      totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
 
   @override
   String toString() {
@@ -121,10 +171,12 @@ class CustomQuizResult {
   }
 }
 
+// ===================================================================
+
 class QuestionResult {
   final String questionText;
-  final int correctAnswer;
-  final int userAnswer;
+  final double correctAnswer;
+  final double userAnswer;
   final bool isCorrect;
 
   QuestionResult({
@@ -144,11 +196,19 @@ class QuestionResult {
   }
 
   factory QuestionResult.fromJson(Map<String, dynamic> json) {
+    double parseNumber(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is int) return value.toDouble();
+      if (value is double) return value;
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return QuestionResult(
-      questionText: json['questionText'],
-      correctAnswer: json['correctAnswer'],
-      userAnswer: json['userAnswer'],
-      isCorrect: json['isCorrect'],
+      questionText: json['questionText'] ?? '',
+      correctAnswer: parseNumber(json['correctAnswer']),
+      userAnswer: parseNumber(json['userAnswer']),
+      isCorrect: json['isCorrect'] ?? false,
     );
   }
 }

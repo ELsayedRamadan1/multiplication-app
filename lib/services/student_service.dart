@@ -49,4 +49,9 @@ class StudentService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
   }
+
+  // Alias for getStudents to maintain backward compatibility
+  Future<List<StudentData>> getAllStudents() async {
+    return await getStudents();
+  }
 }

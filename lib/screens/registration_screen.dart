@@ -17,11 +17,18 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> with TickerProviderStateMixin {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _schoolController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   UserRole _selectedRole = UserRole.student;
   XFile? _selectedAvatar;
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String? _errorMessage;
+  int _selectedGrade = 1;
+  int _selectedClass = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -118,12 +125,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                 ),
                 const SizedBox(height: 24),
 
-                // Name Field
+                // Name Field (Triple name required)
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    labelText: 'الاسم الكامل',
-                    hintText: 'أدخل اسمك الكامل',
+                    labelText: 'الاسم الثلاثي *',
+                    hintText: 'مثال: محمد أحمد علي',
+                    helperText: 'يجب أن يكون الاسم ثلاثياً',
                     prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -135,6 +143,100 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // School Field (only for students)
+                if (_selectedRole == UserRole.student) ...[
+                  TextField(
+                    controller: _schoolController,
+                    decoration: InputDecoration(
+                      labelText: 'المدرسة *',
+                      hintText: 'أدخل اسم المدرسة',
+                      prefixIcon: const Icon(Icons.school),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                          ? Colors.grey.shade800
+                          : Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Grade Selection
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                          ? Colors.grey.shade800
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.grade, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButton<int>(
+                            value: _selectedGrade,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            items: List.generate(6, (index) => index + 1)
+                                .map((grade) => DropdownMenuItem(
+                                      value: grade,
+                                      child: Text('الصف $grade'),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedGrade = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Class Selection
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                          ? Colors.grey.shade800
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.class_, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButton<int>(
+                            value: _selectedClass,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            items: List.generate(10, (index) => index + 1)
+                                .map((classNum) => DropdownMenuItem(
+                                      value: classNum,
+                                      child: Text('الفصل $classNum'),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedClass = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Email Field
                 TextField(
@@ -152,6 +254,60 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                         : Colors.white,
                   ),
                   keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+
+                // Password Field
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'كلمة المرور',
+                    hintText: 'أدخل كلمة المرور (6 أحرف على الأقل)',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                        ? Colors.grey.shade800
+                        : Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Confirm Password Field
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    labelText: 'تأكيد كلمة المرور',
+                    hintText: 'أعد إدخال كلمة المرور',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                        ? Colors.grey.shade800
+                        : Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -209,6 +365,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Info Text
+                Text(
+                  'بإنشائك للحساب، فإنك توافق على شروط الخدمة وسياسة الخصوصية',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
@@ -239,9 +406,44 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
   }
 
   Future<void> _register() async {
-    if (_nameController.text.isEmpty || _emailController.text.isEmpty) {
+    // Validation
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
       setState(() {
         _errorMessage = 'يرجى تعبئة جميع الحقول';
+      });
+      return;
+    }
+
+    // Validate triple name
+    final nameParts = _nameController.text.trim().split(' ');
+    if (nameParts.length < 3 || nameParts.any((part) => part.isEmpty)) {
+      setState(() {
+        _errorMessage = 'يجب إدخال الاسم الثلاثي (الاسم الأول والأوسط والأخير)';
+      });
+      return;
+    }
+
+    // Validate student fields
+    if (_selectedRole == UserRole.student && _schoolController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'يرجى إدخال اسم المدرسة';
+      });
+      return;
+    }
+
+    if (_passwordController.text.length < 6) {
+      setState(() {
+        _errorMessage = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+      });
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(() {
+        _errorMessage = 'كلمتا المرور غير متطابقتين';
       });
       return;
     }
@@ -253,30 +455,39 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
 
     try {
       UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
-      bool success = await userProvider.register(
+      await userProvider.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
+        password: _passwordController.text,
         role: _selectedRole,
         avatarPath: _selectedAvatar?.path,
+        school: _selectedRole == UserRole.student ? _schoolController.text.trim() : '',
+        grade: _selectedRole == UserRole.student ? _selectedGrade : 1,
+        classNumber: _selectedRole == UserRole.student ? _selectedClass : 1,
       );
 
-      if (success) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      } else {
+      if (!mounted) return;
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إنشاء الحساب بنجاح!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      // Navigate to home
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _errorMessage = 'فشل التسجيل. يرجى المحاولة مرة أخرى.';
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -284,6 +495,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _schoolController.dispose();
     super.dispose();
   }
 }

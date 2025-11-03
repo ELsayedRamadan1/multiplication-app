@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "924450068127",
+    "project_id": "multiplication-app-ce2c1",
+    "storage_bucket": "multiplication-app-ce2c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:924450068127:android:83c5568c5ccfc84e84f4aa",
+        "android_client_info": {
+          "package_name": "com.example.multiplication_table_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "924450068127-360hvmca4t2fv1bsunctrt9523fjgfcd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.multiplication_table_app",
+            "certificate_hash": "1e90f90889331d92f5ed7fa542e743af40fab98f"
+          }
+        },
+        {
+          "client_id": "924450068127-0k46sp39b3fi8v6ua6ppkep3890d32n8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjKxaS7WC7zMlofJglMc8zmRkKHSveb6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "924450068127-0k46sp39b3fi8v6ua6ppkep3890d32n8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

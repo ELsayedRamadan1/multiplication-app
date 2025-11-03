@@ -134,9 +134,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   decoration: const InputDecoration(
                     labelText: 'الإجابة الصحيحة',
                     border: OutlineInputBorder(),
-                    hintText: 'أدخل الرقم الصحيح',
+                    hintText: 'أدخل الرقم (صحيح أو عشري أو كسر)',
                   ),
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -215,12 +215,36 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   return;
                 }
 
-                int? answer = int.tryParse(_answerController.text);
-                if (answer == null) {
+                // Check if the input is a valid number (integer, decimal, or fraction)
+                bool isValidNumber(String input) {
+                  // Check for integer or decimal
+                  if (double.tryParse(input) != null) return true;
+
+                  // Check for fraction format (e.g., 1/2, 3/4)
+                  if (RegExp(r'^\s*\d+\s*/\s*\d+\s*$').hasMatch(input)) {
+                    var parts = input.split('/').map((e) => int.tryParse(e.trim())).toList();
+                    return parts.length == 2 && parts[0] != null && parts[1] != null && parts[1] != 0;
+                  }
+
+                  return false;
+                }
+
+                if (!isValidNumber(_answerController.text)) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('الرجاء إدخال رقم صحيح للإجابة')),
+                    const SnackBar(content: Text('الرجاء إدخال رقم صحيح أو عشري أو كسر (مثل ١.٥ أو ١/٢)')),
                   );
                   return;
+                }
+
+                // Parse the answer (could be integer, decimal, or fraction)
+                double answer;
+                if (_answerController.text.contains('/')) {
+                  // Handle fraction (e.g., 1/2)
+                  var parts = _answerController.text.split('/').map((e) => double.parse(e.trim())).toList();
+                  answer = parts[0] / parts[1];
+                } else {
+                  // Handle integer or decimal
+                  answer = double.parse(_answerController.text);
                 }
 
                 Question newQuestion;
@@ -308,8 +332,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   onPressed: _showStudentSelectionDialog,
                   icon: const Icon(Icons.people),
                   label: Text(_selectedStudentNames.isEmpty
-                    ? 'اختر الطلاب'
-                    : 'تم اختيار: ${_selectedStudentNames.length} طلاب'),
+                      ? 'اختر الطلاب'
+                      : 'تم اختيار: ${_selectedStudentNames.length} طلاب'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _selectedStudentNames.isEmpty ? Colors.grey : Colors.blue,
                   ),
@@ -327,34 +351,34 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   child: _customQuestions.isEmpty
                       ? const Center(child: Text('لا توجد أسئلة متاحة', textDirection: TextDirection.rtl))
                       : ListView.builder(
-                          itemCount: _customQuestions.length,
-                          itemBuilder: (context, index) {
-                            Question question = _customQuestions[index];
-                            bool isSelected = _selectedQuestionIds.contains(question.id);
+                    itemCount: _customQuestions.length,
+                    itemBuilder: (context, index) {
+                      Question question = _customQuestions[index];
+                      bool isSelected = _selectedQuestionIds.contains(question.id);
 
-                            return CheckboxListTile(
-                              title: Text(
-                                question.question,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textDirection: TextDirection.rtl,
-                              ),
-                              subtitle: Text('الإجابة: ${question.correctAnswer}', textDirection: TextDirection.rtl),
-                              value: isSelected,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  if (value == true) {
-                                    if (!_selectedQuestionIds.contains(question.id)) {
-                                      _selectedQuestionIds.add(question.id);
-                                    }
-                                  } else {
-                                    _selectedQuestionIds.remove(question.id);
-                                  }
-                                });
-                              },
-                            );
-                          },
+                      return CheckboxListTile(
+                        title: Text(
+                          question.question,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textDirection: TextDirection.rtl,
                         ),
+                        subtitle: Text('الإجابة: ${question.correctAnswer}', textDirection: TextDirection.rtl),
+                        value: isSelected,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              if (!_selectedQuestionIds.contains(question.id)) {
+                                _selectedQuestionIds.add(question.id);
+                              }
+                            } else {
+                              _selectedQuestionIds.remove(question.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -543,57 +567,57 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   Expanded(
                     child: _customQuestions.isEmpty
                         ? const Center(
-                            child: Text(
-                              'لا توجد أسئلة متاحة',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
-                              textDirection: TextDirection.rtl,
-                            ),
-                          )
+                      child: Text(
+                        'لا توجد أسئلة متاحة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                        textDirection: TextDirection.rtl,
+                      ),
+                    )
                         : ListView.builder(
-                            itemCount: _customQuestions.length,
-                            itemBuilder: (context, index) {
-                              Question question = _customQuestions[index];
-                              return Card(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                child: ListTile(
-                                  title: Text(
-                                    question.question,
-                                    style: TextStyle(
-                                      color: question.type == QuestionType.customImage
-                                          ? Colors.blue
-                                          : null,
-                                    ),
+                      itemCount: _customQuestions.length,
+                      itemBuilder: (context, index) {
+                        Question question = _customQuestions[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: ListTile(
+                            title: Text(
+                              question.question,
+                              style: TextStyle(
+                                color: question.type == QuestionType.customImage
+                                    ? Colors.blue
+                                    : null,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('الإجابة: ${question.correctAnswer}'),
+                                if (question.explanation != null)
+                                  Text(
+                                    'الشرح: ${question.explanation!}',
+                                    style: const TextStyle(fontStyle: FontStyle.italic),
+                                    textDirection: TextDirection.rtl,
                                   ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('الإجابة: ${question.correctAnswer}'),
-                                      if (question.explanation != null)
-                                        Text(
-                                          'الشرح: ${question.explanation!}',
-                                          style: const TextStyle(fontStyle: FontStyle.italic),
-                                          textDirection: TextDirection.rtl,
-                                        ),
-                                      Text(
-                                        'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        textDirection: TextDirection.rtl,
-                                      ),
-                                    ],
+                                Text(
+                                  'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
                                   ),
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Coming soon')),
-                                    );
-                                  },
+                                  textDirection: TextDirection.rtl,
                                 ),
+                              ],
+                            ),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Coming soon')),
                               );
                             },
                           ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -618,9 +642,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _showCreateAssignmentDialog,
                       icon: const Icon(Icons.assignment),
-                      label: const Text('Create Assignment'),
+                      label: const Text('إنشاء الواجب'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
+                        backgroundColor: Colors.orange,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
@@ -629,59 +653,59 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   Expanded(
                     child: _assignments.isEmpty
                         ? const Center(
-                            child: Text(
-                              'No assignments available',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
-                            ),
-                          )
+                      child: Text(
+                        'لا توجد واجبات متاحة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
                         : ListView.builder(
-                            itemCount: _assignments.length,
-                            itemBuilder: (context, index) {
-                              CustomAssignment assignment = _assignments[index];
-                              return Card(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                child: ListTile(
-                                  title: Text(
-                                    assignment.title,
-                                    style: TextStyle(
-                                      color: assignment.description != null ? Colors.purple : null,
-                                    ),
+                      itemCount: _assignments.length,
+                      itemBuilder: (context, index) {
+                        CustomAssignment assignment = _assignments[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: ListTile(
+                            title: Text(
+                              assignment.title,
+                              style: TextStyle(
+                                color: assignment.description != null ? Colors.purple : null,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('الاسئلة: ${assignment.questions.length}'),
+                                if (assignment.description != null)
+                                  Text(
+                                    assignment.description!,
+                                    style: const TextStyle(fontStyle: FontStyle.italic),
                                   ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Questions: ${assignment.questions.length}'),
-                                      if (assignment.description != null)
-                                        Text(
-                                          assignment.description!,
-                                          style: const TextStyle(fontStyle: FontStyle.italic),
-                                        ),
-                                    ],
-                                  ),
-                                  trailing: PopupMenuButton<String>(
-                                    onSelected: (value) {
-                                      if (value == 'delete') {
-                                        _deleteAssignment(assignment);
-                                      } else if (value == 'edit') {
-                                        _showEditAssignmentDialog(assignment);
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text('Delete', style: TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
+                              ],
+                            ),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (value) {
+                                if (value == 'delete') {
+                                  _deleteAssignment(assignment);
+                                } else if (value == 'edit') {
+                                  _showEditAssignmentDialog(assignment);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Edit'),
                                 ),
-                              );
-                            },
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
                           ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -706,32 +730,32 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   }
 
                   List<User> students = snapshot.data as List<User>;
-                  
+
                   return students.isEmpty
                       ? const Center(
-                          child: Text(
-                            'لا يوجد طلاب مسجلين',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                            textDirection: TextDirection.rtl,
-                          ),
-                        )
+                    child: Text(
+                      'لا يوجد طلاب مسجلين',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      textDirection: TextDirection.rtl,
+                    ),
+                  )
                       : ListView.builder(
-                          itemCount: students.length,
-                          itemBuilder: (context, index) {
-                            User student = students[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  child: Text(student.name[0].toUpperCase()),
-                                ),
-                                title: Text(student.name),
-                                subtitle: Text(student.email),
-                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                              ),
-                            );
-                          },
-                        );
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      User student = students[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            child: Text(student.name[0].toUpperCase()),
+                          ),
+                          title: Text(student.name),
+                          subtitle: Text(student.email),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
             ),
@@ -750,56 +774,56 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               child: _assignments.isEmpty
                   ? const Center(
-                      child: Text(
-                        'لا توجد واجبات متاحة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    )
+                child: Text(
+                  'لا توجد واجبات متاحة',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              )
                   : ListView.builder(
-                      itemCount: _assignments.length,
-                      itemBuilder: (context, index) {
-                        CustomAssignment assignment = _assignments[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ExpansionTile(
-                            title: Text(assignment.title),
-                            subtitle: Text('عدد الطلاب: ${assignment.assignedStudentIds.length}'),
+                itemCount: _assignments.length,
+                itemBuilder: (context, index) {
+                  CustomAssignment assignment = _assignments[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ExpansionTile(
+                      title: Text(assignment.title),
+                      subtitle: Text('عدد الطلاب: ${assignment.assignedStudentIds.length}'),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'الطلاب المكلفين:',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.orange.shade700,
-                                      ),
-                                      textDirection: TextDirection.rtl,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...assignment.assignedStudentNames.map((name) => 
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                        child: Text('• $name', textDirection: TextDirection.rtl),
-                                      )
-                                    ).toList(),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'عدد الأسئلة: ${assignment.questions.length}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                      textDirection: TextDirection.rtl,
-                                    ),
-                                  ],
+                              Text(
+                                'الطلاب المكلفين:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange.shade700,
                                 ),
+                                textDirection: TextDirection.rtl,
+                              ),
+                              const SizedBox(height: 8),
+                              ...assignment.assignedStudentNames.map((name) =>
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                    child: Text('• $name', textDirection: TextDirection.rtl),
+                                  )
+                              ).toList(),
+                              const SizedBox(height: 16),
+                              Text(
+                                'عدد الأسئلة: ${assignment.questions.length}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                textDirection: TextDirection.rtl,
                               ),
                             ],
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),

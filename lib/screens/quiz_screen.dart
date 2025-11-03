@@ -1,43 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/question_model.dart';
-import '../models/student_data_model.dart';
+import '../models/quiz_settings_model.dart';
+import '../models/student_data_model.dart' show StudentAnswer, StudentData;
 import '../services/quiz_service.dart';
 import '../services/student_service.dart';
 import '../services/user_provider.dart';
 import '../theme_provider.dart';
 
+// Helper function to convert English numbers to Arabic numerals
+String _toArabicNumerals(String input) {
+  if (input.isEmpty) return input;
+
+  const en = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+  String result = '';
+  for (int i = 0; i < input.length; i++) {
+    final char = input[i];
+    final index = en.indexOf(char);
+    result += index != -1 ? ar[index] : char;
+  }
+  return result;
+}
+
 class QuizScreen extends StatefulWidget {
   final String studentName;
+  final int minQuestions;
+  final int maxQuestions;
+  final int? tableNumber;
+  final bool isRandomTable;
+  final OperationType operationType;
+  final DifficultyLevel difficultyLevel;
 
-  const QuizScreen({super.key, required this.studentName});
+  const QuizScreen({
+    Key? key,
+    required this.studentName,
+    this.minQuestions = 5,
+    this.maxQuestions = 10,
+    this.tableNumber,
+    this.isRandomTable = true,
+    required this.operationType,
+    required this.difficultyLevel,
+  }) : assert(minQuestions <= maxQuestions, 'minQuestions must be less than or equal to maxQuestions');
 
   @override
   _QuizScreenState createState() => _QuizScreenState();
 }
 
-class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
-  final QuizService _quizService = QuizService();
-  late Question _currentQuestion;
-  late TextEditingController _controller;
-  bool? _isCorrect;
-  int _score = 0;
-  int _totalQuestions = 0;
+class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateMixin {
+  late final QuizService _quizService;
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  List<StudentAnswer> _answers = [];
+  late Question _currentQuestion;
+  bool _isLoading = true;
+  bool _showCorrectAnswer = false;
+  int _score = 0;
+  int _currentQuestionIndex = 0;
+  int _totalQuestions = 0;
+  bool? _isCorrect;
+  final List<StudentAnswer> _answers = [];
 
   @override
   void initState() {
     super.initState();
+    _quizService = QuizService();
     _controller = TextEditingController();
-    _currentQuestion = _quizService.generateQuestion();
+    _focusNode = FocusNode();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
       vsync: this,
+      duration: const Duration(milliseconds: 300),
     );
-    _fadeAnimation =
-        Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
+    _initializeQuiz();
+  }
+
+  Future<void> _initializeQuiz() async {
+    _quizService.setQuizSettings(QuizSettings(
+      minQuestions: widget.minQuestions,
+      maxQuestions: widget.maxQuestions,
+      tableNumber: widget.tableNumber,
+      isRandomTable: widget.isRandomTable,
+      operationType: widget.operationType,
+      difficultyLevel: widget.difficultyLevel,
+    ));
+
+    _totalQuestions = _quizService.getTotalQuestionCount();
+    _currentQuestion = _quizService.generateQuestion();
+    setState(() => _isLoading = false);
     _animationController.forward();
   }
 
@@ -51,30 +103,93 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _checkAnswer() {
-    int? answer = int.tryParse(_controller.text);
-    if (answer != null) {
-      bool isCorrect = _quizService.checkAnswer(_currentQuestion, answer);
-      _answers.add(StudentAnswer(
-        question: '${_currentQuestion.a} x ${_currentQuestion.b}',
-        answer: answer.toString(),
-        isCorrect: isCorrect,
-      ));
-      setState(() {
-        _isCorrect = isCorrect;
-        _totalQuestions++;
-        if (isCorrect) {
-          _score++;
-        }
-      });
+  // Convert Arabic numerals to English before parsing
+  int _parseArabicNumber(String value) {
+    if (value.isEmpty) return 0;
+
+    const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    String englishNumber = '';
+
+    for (int i = 0; i < value.length; i++) {
+      final char = value[i];
+      final index = ar.indexOf(char);
+      englishNumber += index != -1 ? index.toString() : char;
+    }
+
+    return int.tryParse(englishNumber) ?? 0;
+  }
+
+  // Helper method to get the operation symbol
+  String _getOperationSymbol(OperationType operation) {
+    switch (operation) {
+      case OperationType.addition:
+        return '+';
+      case OperationType.subtraction:
+        return '-';
+      case OperationType.multiplication:
+        return '×';
+      case OperationType.division:
+        return '÷';
     }
   }
 
+  void _checkAnswer() {
+    int answer = _parseArabicNumber(_controller.text);
+    bool isCorrect = answer == _currentQuestion.correctAnswer;
+
+    setState(() {
+      _answers.add(StudentAnswer(
+        question: '${_currentQuestion.a} ${_getOperationSymbol(_currentQuestion.operation)} ${_currentQuestion.b}',
+        answer: answer.toString(),
+        isCorrect: isCorrect,
+      ));
+
+      _isCorrect = isCorrect;
+      _currentQuestionIndex++;
+      if (isCorrect) {
+        _score++;
+      }
+
+      // If we've reached max questions, finish the quiz
+      if (_currentQuestionIndex >= _totalQuestions) {
+        _finishQuiz();
+        return;
+      }
+
+      // Show next question after a delay
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() {
+            _currentQuestion = _quizService.generateQuestion();
+            _controller.clear();
+            _isCorrect = null;
+            _animationController.reset();
+            _animationController.forward();
+          });
+        }
+      });
+    });
+  }
+
   void _finishQuiz() async {
+    // Check if minimum questions are answered
+    if (_totalQuestions < widget.minQuestions) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يجب الإجابة على الأقل على ${_toArabicNumerals(widget.minQuestions.toString())} أسئلة'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     // Save quiz results using UserProvider
     UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
     if (userProvider.isLoggedIn) {
-      await userProvider.updateUserScore(_score, subject: 'multiplication_quiz');
+      userProvider.updateUserScore(_score, subject: 'multiplication_quiz');
     }
 
     // Also save to student service for backward compatibility
@@ -85,19 +200,41 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       totalQuestions: _totalQuestions,
       answers: _answers,
     );
-    await service.saveStudent(student);
+    service.saveStudent(student);
 
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تم الانتهاء من الاختبار! النتيجة النهائية: $_score/$_totalQuestions')),
-    );
+    if (mounted) {
+      Navigator.pop(context, {
+        'score': _score,
+        'total': _totalQuestions,
+        'answers': _answers.map((a) => a.toJson()).toList(),
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('اختبار جدول الضرب'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text('اختبار جدول الضرب'),
+            if (_totalQuestions > 0)
+              Text(
+                'السؤال ${_toArabicNumerals((_currentQuestionIndex + 1).toString())} من ${_toArabicNumerals(_totalQuestions.toString())}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+          ],
+        ),
         backgroundColor: Provider
             .of<ThemeProvider>(context)
             .themeMode == ThemeMode.dark
@@ -126,7 +263,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 500),
                   child: Text(
-                    'سؤال ${_totalQuestions + 1}',
+                    'السؤال ${_toArabicNumerals((_currentQuestionIndex + 1).toString())}',
                     key: ValueKey<int>(_score + _totalQuestions),
                     style: TextStyle(
                       fontSize: 20,
@@ -143,7 +280,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Text(
-                    'ما هو حاصل ضرب ${_currentQuestion.a} × ${_currentQuestion.b}؟',
+                    'النتيجة: ${_toArabicNumerals(_score.toString())} من ${_toArabicNumerals(_totalQuestions.toString())}',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -156,8 +293,32 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(height: 16),
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Text(
+                    '${_toArabicNumerals(_currentQuestion.a.toString())} ${_getOperationSymbol(_currentQuestion.operation)} ${_toArabicNumerals(_currentQuestion.b.toString())} = ؟',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Provider
+                          .of<ThemeProvider>(context)
+                          .themeMode == ThemeMode.dark
+                          ? Colors.white
+                          : Colors.blue.shade800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 TextField(
                   controller: _controller,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.center,
+                  onChanged: (value) {
+                    // Convert to Arabic numerals as user types
+                    final selection = _controller.selection;
+                    _controller.text = _toArabicNumerals(value);
+                    _controller.selection = selection;
+                  },
                   decoration: InputDecoration(
                     labelText: 'أدخل إجابتك',
                     labelStyle: TextStyle(
@@ -262,7 +423,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         Text(
                           _isCorrect!
                               ? 'إجابة صحيحة! +1 نقطة'
-                              : 'إجابة خاطئة! الإجابة الصحيحة هي ${_currentQuestion.correctAnswer}.',
+                              : 'إجابة خاطئة! الإجابة الصحيحة: ${_toArabicNumerals(_currentQuestion.correctAnswer.toString())}.',
                           style: TextStyle(
                             color: _isCorrect! ? Colors.green : Colors.red,
                             fontSize: 16,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/user_model.dart';
 import '../services/user_provider.dart';
 import '../theme_provider.dart';
 import 'home_screen.dart';
@@ -14,9 +15,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
 
   @override
@@ -33,9 +36,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty) {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'الرجاء إدخال البريد الإلكتروني';
+        _errorMessage = 'الرجاء إدخال البريد الإلكتروني وكلمة المرور';
       });
       return;
     }
@@ -45,20 +48,203 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       _errorMessage = null;
     });
 
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
-    bool success = await userProvider.login(_emailController.text.trim());
+    try {
+      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (success) {
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    } else {
+    } catch (e) {
       setState(() {
-        _errorMessage = 'لم يتم العثور على المستخدم. الرجاء التسجيل أولاً.';
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // عرض dialog لاختيار الدور
+      UserRole? role = await showDialog<UserRole>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('اختر نوع الحساب'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person, color: Colors.blue),
+                title: const Text('طالب'),
+                onTap: () => Navigator.pop(context, UserRole.student),
+              ),
+              ListTile(
+                leading: const Icon(Icons.school, color: Colors.orange),
+                title: const Text('معلم'),
+                onTap: () => Navigator.pop(context, UserRole.teacher),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (role == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // إذا كان طالب، اطلب البيانات الإضافية
+      Map<String, dynamic>? studentData;
+      if (role == UserRole.student) {
+        studentData = await _showStudentDataDialog();
+        if (studentData == null) {
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.signInWithGoogle(
+        role: role,
+        school: studentData?['school'],
+        grade: studentData?['grade'],
+        classNumber: studentData?['classNumber'],
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _showStudentDataDialog() async {
+    final schoolController = TextEditingController();
+    int selectedGrade = 1;
+    int selectedClass = 1;
+
+    return await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('بيانات الطالب'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: schoolController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم المدرسة *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.school),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  value: selectedGrade,
+                  decoration: const InputDecoration(
+                    labelText: 'الصف',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.grade),
+                  ),
+                  items: List.generate(6, (i) => i + 1)
+                      .map((grade) => DropdownMenuItem(
+                            value: grade,
+                            child: Text('الصف $grade'),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => selectedGrade = value!);
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  value: selectedClass,
+                  decoration: const InputDecoration(
+                    labelText: 'الفصل',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.class_),
+                  ),
+                  items: List.generate(10, (i) => i + 1)
+                      .map((classNum) => DropdownMenuItem(
+                            value: classNum,
+                            child: Text('الفصل $classNum'),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => selectedClass = value!);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (schoolController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('يرجى إدخال اسم المدرسة')),
+                  );
+                  return;
+                }
+                Navigator.pop(context, {
+                  'school': schoolController.text.trim(),
+                  'grade': selectedGrade,
+                  'classNumber': selectedClass,
+                });
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resetPassword() async {
+    if (_emailController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'الرجاء إدخال البريد الإلكتروني';
+      });
+      return;
+    }
+
+    try {
+      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.resetPassword(_emailController.text.trim());
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
@@ -141,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
                     // App Title
                     Text(
-                      ' جدول الضرب',
+                      'جدول الضرب',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -187,9 +373,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'مرحباً بعودتك!',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
@@ -220,10 +406,48 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   : Colors.grey.shade50,
                             ),
                             keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Password Field
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            decoration: InputDecoration(
+                              labelText: 'كلمة المرور',
+                              hintText: 'أدخل كلمة المرور',
+                              prefixIcon: const Icon(Icons.lock),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                ),
+                                onPressed: () {
+                                  setState(() => _obscurePassword = !_obscurePassword);
+                                },
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade50,
+                            ),
                             textInputAction: TextInputAction.done,
                             onSubmitted: (_) => _login(),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
+
+                          // Forgot Password
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _resetPassword,
+                              child: const Text('نسيت كلمة المرور؟'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
 
                           // Error Message
                           if (_errorMessage != null)
@@ -263,20 +487,64 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               ),
                               child: _isLoading
                                   ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                                   : const Text(
-                                      'تسجيل الدخول',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                'تسجيل الدخول',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Divider
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: Colors.grey.shade400)),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'أو',
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: Colors.grey.shade400)),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Google Sign In Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _signInWithGoogle,
+                              icon:const Icon(
+                                Icons.g_mobiledata,
+                                size: 45,
+                                color: Colors.blue,
+                              ),
+                              label: const Text(
+                                'تسجيل الدخول بـ Google',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                side: BorderSide(color: Colors.grey.shade300),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -285,18 +553,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Flexible(
-                                child: Text(
-                                  'ليس لديك حساب؟',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  textAlign: TextAlign.center,
+                              Text(
+                                'ليس لديك حساب؟',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
                               TextButton(
                                 onPressed: _showRegistrationDialog,
-                                child: Text(
+                                child: const Text(
                                   'إنشاء حساب',
                                   style: TextStyle(
                                     color: Colors.blue,
@@ -305,43 +570,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                             ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Demo Accounts Info
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.info, color: Colors.amber),
-                          const SizedBox(height: 8),
-                          Text(
-                            'حسابات تجريبية',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'أدخل بريدك الإلكتروني لإنشاء حساب جديد أو تسجيل الدخول',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.amber.shade700,
-                            ),
-                            textAlign: TextAlign.center,
-                            softWrap: true,
                           ),
                         ],
                       ),
@@ -359,6 +587,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
     _animationController.dispose();
     super.dispose();
   }

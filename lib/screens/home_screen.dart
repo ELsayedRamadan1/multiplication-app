@@ -6,8 +6,8 @@ import '../models/notification_model.dart';
 import '../services/user_provider.dart';
 import '../theme_provider.dart';
 import 'create_question_screen.dart';
-import 'custom_quiz_screen.dart';
 import 'quiz_screen.dart';
+import 'quiz_setup_screen.dart';
 import 'table_screen.dart';
 import 'teacher_dashboard.dart';
 import 'notifications_screen.dart';
@@ -36,6 +36,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         }
+        String _toArabicNumber(int number) {
+          const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+          const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+          String result = number.toString();
+          for (int i = 0; i < english.length; i++) {
+            result = result.replaceAll(english[i], arabic[i]);
+          }
+          return result;
+        }
+
 
         return Scaffold(
           appBar: AppBar(
@@ -147,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // ),
             ],
           ),
+
           body: Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -298,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 24),
 
                       if (!userProvider.isTeacher) ...[
-                        Text('جدول الضرب', style: const TextStyle(fontSize: 16)),
+                        const Text('جدول الضرب', style: TextStyle(fontSize: 16, fontFamily: 'Arial')),
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
@@ -326,7 +338,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 value: value,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  child: Text('$value', style: const TextStyle(fontSize: 16)),
+                                  child: Text(
+                                    _toArabicNumber(value),
+                                    style: const TextStyle(fontSize: 16, fontFamily: 'Arial'),
+                                    textDirection: TextDirection.rtl,
+                                  ),
                                 ),
                               );
                             }).toList(),
@@ -371,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               PageRouteBuilder(
                                 pageBuilder: (context, animation, secondaryAnimation) =>
-                                    QuizScreen(studentName: userProvider.currentUser?.name ?? 'Student'),
+                                    QuizSetupScreen(studentName: userProvider.currentUser?.name ?? 'Student'),
                                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                   const begin = Offset(1.0, 0.0);
                                   const end = Offset.zero;
@@ -386,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                           icon: const Icon(Icons.quiz, size: 18),
-                          label: Text('الاختبار'),
+                          label: Text('بدء اختبار'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             backgroundColor: Colors.green,

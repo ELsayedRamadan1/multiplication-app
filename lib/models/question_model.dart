@@ -1,105 +1,145 @@
-import 'package:flutter/foundation.dart';
 
 enum QuestionType {
-  multiplication, // Traditional multiplication questions
-  customText,     // Custom text-based questions
-  customImage,    // Custom questions with images
+  addition,
+  subtraction,
+  multiplication,
+  division,
+  customText,
+  customImage,
+}
+
+enum OperationType {
+  addition,
+  subtraction,
+  multiplication,
+  division,
 }
 
 class Question {
   final String id;
-  final QuestionType type;
   final String question;
-  final String? imagePath; // For image questions
-  final int correctAnswer;
-  final String? explanation; // Optional explanation for the answer
-  final DateTime createdAt;
-
-  // For backward compatibility with traditional multiplication questions
+  final double correctAnswer;
   final int? a;
   final int? b;
+  final OperationType operation;
+  final QuestionType type;
+  final String? explanation;
+  final String? imagePath;
 
   Question({
     required this.id,
-    required this.type,
     required this.question,
-    this.imagePath,
     required this.correctAnswer,
-    this.explanation,
-    DateTime? createdAt,
     this.a,
     this.b,
-  }) : createdAt = createdAt ?? DateTime.now();
+    required this.operation,
+    required this.type,
+    this.explanation,
+    this.imagePath,
+  });
 
-  // Factory constructor for traditional multiplication questions (with backward compatibility)
-  factory Question.multiplication(int a, int b) {
+  // Factory constructor for arithmetic questions
+  factory Question.arithmetic(int a, int b, OperationType operation) {
+    final question = '${a} ${_getOperationSymbol(operation)} ${b} = ؟';
+    final answer = _calculateAnswer(a, b, operation);
     return Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: QuestionType.multiplication,
-      question: 'What is $a × $b?',
-      correctAnswer: a * b,
+      question: question,
+      correctAnswer: answer,
       a: a,
       b: b,
+      operation: operation,
+      type: _toQuestionType(operation),
     );
   }
 
+  // For backward compatibility
+  factory Question.multiplication(int a, int b) {
+    return Question.arithmetic(a, b, OperationType.multiplication);
+  }
+
   // Factory constructor for custom text questions
-  factory Question.customText(String questionText, int answer, {String? explanation}) {
+  factory Question.customText(String question, double answer, {String? explanation}) {
     return Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: QuestionType.customText,
-      question: questionText,
+      question: question,
       correctAnswer: answer,
+      operation: OperationType.addition, // Default operation
+      type: QuestionType.customText,
       explanation: explanation,
     );
   }
 
   // Factory constructor for custom image questions
-  factory Question.customImage(String questionText, int answer, String imagePath, {String? explanation}) {
+  factory Question.customImage(String question, double answer, String imagePath, {String? explanation}) {
     return Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: QuestionType.customImage,
-      question: questionText,
-      imagePath: imagePath,
+      question: question,
       correctAnswer: answer,
+      operation: OperationType.addition, // Default operation
+      type: QuestionType.customImage,
       explanation: explanation,
+      imagePath: imagePath,
     );
   }
 
-  bool isCorrect(int userAnswer) {
-    return userAnswer == correctAnswer;
-  }
-
+  // Convert to map for JSON serialization
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'type': type.index,
       'question': question,
-      'imagePath': imagePath,
       'correctAnswer': correctAnswer,
-      'explanation': explanation,
-      'createdAt': createdAt.toIso8601String(),
       'a': a,
       'b': b,
+      'operation': operation.index,
+      'type': type.index,
+      'explanation': explanation,
+      'imagePath': imagePath,
     };
   }
 
+  // Create from map for JSON deserialization
   factory Question.fromJson(Map<String, dynamic> json) {
     return Question(
       id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      type: QuestionType.values[json['type']],
       question: json['question'],
-      imagePath: json['imagePath'],
-      correctAnswer: json['correctAnswer'],
-      explanation: json['explanation'],
-      createdAt: DateTime.parse(json['createdAt']),
+      correctAnswer: (json['correctAnswer'] as num).toDouble(),
       a: json['a'],
       b: json['b'],
+      operation: OperationType.values[json['operation'] ?? OperationType.multiplication.index],
+      type: QuestionType.values[json['type'] ?? QuestionType.multiplication.index],
+      explanation: json['explanation'],
+      imagePath: json['imagePath'],
     );
+  }
+
+  // Helper method to calculate answer
+  static double _calculateAnswer(int a, int b, OperationType operation) {
+    switch (operation) {
+      case OperationType.addition: return (a + b).toDouble();
+      case OperationType.subtraction: return (a - b).toDouble();
+      case OperationType.multiplication: return (a * b).toDouble();
+      case OperationType.division: return (a / b).toDouble();
+    }
+  }
+
+  // Helper method to get operation symbol
+  static String _getOperationSymbol(OperationType operation) {
+    switch (operation) {
+      case OperationType.addition: return '+';
+      case OperationType.subtraction: return '-';
+      case OperationType.multiplication: return '×';
+      case OperationType.division: return '÷';
+    }
+  }
+
+  // Helper method to convert OperationType to QuestionType
+  static QuestionType _toQuestionType(OperationType operation) {
+    return QuestionType.values[operation.index];
   }
 
   @override
   String toString() {
-    return 'Question(type: $type, question: $question, answer: $correctAnswer)';
+    return 'Question{id: $id, question: $question, correctAnswer: $correctAnswer, type: $type}';
   }
 }

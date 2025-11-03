@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/assignment_model.dart';
+import '../models/notification_model.dart';
 import '../models/question_model.dart';
+import '../services/assignment_service.dart';
+import '../services/notification_service.dart';
 import '../services/user_provider.dart';
 import '../theme_provider.dart';
 import 'custom_quiz_screen.dart';
@@ -16,99 +19,204 @@ class StudentAssignmentsScreen extends StatefulWidget {
 class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
   List<CustomAssignment> _assignments = [];
 
+  final AssignmentService _assignmentService = AssignmentService();
+  final NotificationService _notificationService = NotificationService();
+  bool _isLoading = true;
+  List<NotificationModel> _notifications = [];
+
   @override
   void initState() {
     super.initState();
-    _loadAssignments();
+    _loadData();
   }
 
-  Future<void> _loadAssignments() async {
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
-    List<CustomAssignment> assignments = await userProvider.getActiveStudentAssignments();
-    setState(() {
-      _assignments = assignments;
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final currentUser = userProvider.currentUser;
+      
+      if (currentUser != null) {
+        final assignments = await _assignmentService.getActiveAssignmentsForStudent(currentUser.id);
+        final notifications = await _notificationService.getNotificationsForUser(currentUser.id);
+        
+        if (mounted) {
+          setState(() {
+            _assignments = assignments;
+            _notifications = notifications;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل في تحميل البيانات: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleStartAssignment(CustomAssignment assignment) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUser = userProvider.currentUser;
+    
+    if (currentUser == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CustomQuizScreen(
+          assignment: assignment,
+          studentName: currentUser.name,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('واجباتي'),
-        backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-            ? Colors.black
-            : Colors.blue.shade800,
+        title: const Text('الواجبات المطلوبة'),
+        centerTitle: true,
+        backgroundColor: isDarkMode ? Colors.black : Colors.blue.shade800,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadAssignments,
+            onPressed: _loadData,
             tooltip: 'تحديث',
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                ? [Colors.grey.shade900, Colors.black]
-                : [Colors.blue.shade50, Colors.white],
-          ),
-        ),
-        child: _assignments.isEmpty
-            ? Center(
-                child: Text(
-                  'لايوجد واجبات متاحة.\nافحص مرة اخري!',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-              )
-            : ListView.builder(
-                itemCount: _assignments.length,
-                itemBuilder: (context, index) {
-                  CustomAssignment assignment = _assignments[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: ListTile(
-                      title: Text(
-                        assignment.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${assignment.questions.length} الاسئلة'),
-                          if (assignment.description != null && assignment.description!.isNotEmpty)
-                            Text(
-                              assignment.description!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _assignments.isEmpty
+              ? const Center(
+                  child: Text(
+                    'لا توجد واجبات حالياً',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: _assignments.length,
+                    itemBuilder: (context, index) {
+                      final assignment = _assignments[index];
+                      final hasNewNotification = _notifications.any(
+                        (n) => n.assignmentId == assignment.id && !n.isRead,
+                      );
+                      
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          vertical: 8.0,
+                          horizontal: 4.0,
+                        ),
+                        elevation: 2,
+                        child: ListTile(
+                          title: Row(
+                            children: [
+                              if (hasNewNotification)
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  margin: const EdgeInsets.only(left: 8),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              Expanded(
+                                child: Text(
+                                  assignment.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
-                            ),
-                          Text(
-                            'From: ${assignment.teacherName}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.play_arrow, color: Colors.green),
-                        onPressed: () => _startAssignment(assignment),
-                        tooltip: 'ابدا الواجب',
-                      ),
-                      onTap: () => _showAssignmentDetails(assignment),
-                    ),
-                  );
-                },
-              ),
-      ),
-    );
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (assignment.description != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4, bottom: 4),
+                                  child: Text(
+                                    assignment.description!,
+                                    style: TextStyle(
+                                      color: isDarkMode 
+                                          ? Colors.grey[400] 
+                                          : Colors.grey[800],
+                                    ),
+                                  ),
+                                ),
+                              if (assignment.dueDate != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'تاريخ التسليم: ${assignment.dueDate!.toLocal().toString().split(' ')[0]}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.person,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'المعلم: ${assignment.teacherName}',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: ElevatedButton(
+                            onPressed: () => _handleStartAssignment(assignment),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isDarkMode 
+                                  ? Colors.blue[700] 
+                                  : Colors.blue[600],
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('بدء الحل'),
+                          ),
+                          onTap: () => _handleStartAssignment(assignment),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+      );
+
   }
 
   void _showAssignmentDetails(CustomAssignment assignment) {
@@ -164,14 +272,6 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
   }
 
   void _startAssignment(CustomAssignment assignment) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CustomQuizScreen(
-          assignment: assignment,
-          studentName: Provider.of<UserProvider>(context, listen: false).currentUser?.name ?? 'الطالب',
-        ),
-      ),
-    );
+    _handleStartAssignment(assignment);
   }
 }

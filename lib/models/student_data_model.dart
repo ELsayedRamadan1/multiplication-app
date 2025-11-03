@@ -32,20 +32,24 @@ class StudentAnswer {
 }
 
 class StudentData {
+  final String id;
   final String name;
   final int score;
   final int totalQuestions;
   final List<StudentAnswer> answers;
 
   StudentData({
+    String? id,
     required this.name,
-    required this.score,
-    required this.totalQuestions,
-    required this.answers,
-  });
+    this.score = 0,
+    this.totalQuestions = 0,
+    List<StudentAnswer>? answers,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       answers = answers ?? [];
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'score': score,
       'totalQuestions': totalQuestions,
@@ -55,12 +59,14 @@ class StudentData {
 
   factory StudentData.fromJson(Map<String, dynamic> json) {
     return StudentData(
-      name: json['name'],
-      score: json['score'],
-      totalQuestions: json['totalQuestions'],
+      id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: json['name'] ?? 'Unknown',
+      score: json['score'] ?? 0,
+      totalQuestions: json['totalQuestions'] ?? 0,
       answers: (json['answers'] as List<dynamic>?)
-          ?.map((answerJson) => StudentAnswer.fromJson(answerJson))
-          .toList() ?? [],
+              ?.map((e) => StudentAnswer.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -72,16 +78,17 @@ class StudentData {
     required List<String> answers,
   }) {
     return StudentData(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       score: score,
       totalQuestions: totalQuestions,
-      answers: answers.map((answer) {
-        // Parse old format: "2 x 3 = 6" and assume all are correct for backward compatibility
-        return StudentAnswer(
-          question: answer.split(' = ')[0],
-          answer: answer.split(' = ')[1],
-          isCorrect: true, // Assume correct for old data
-        );
-      }).toList(),
+      answers: answers
+          .map((answer) => StudentAnswer(
+                question: '',
+                answer: answer,
+                isCorrect: false,
+              ))
+          .toList(),
     );
-  }}
+  }
+}

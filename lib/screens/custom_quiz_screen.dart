@@ -106,9 +106,23 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
   void _checkAnswer() {
     if (_currentQuestion == null) return;
 
-    int? answer = int.tryParse(_controller.text);
+    // Handle both integer and decimal inputs
+    String input = _controller.text.trim();
+    double? answer;
+    
+    // Check for fraction format (e.g., 1/2)
+    if (input.contains('/')) {
+      var parts = input.split('/').map((e) => double.tryParse(e.trim())).toList();
+      if (parts.length == 2 && parts[0] != null && parts[1] != null && parts[1] != 0) {
+        answer = parts[0]! / parts[1]!;
+      }
+    } else {
+      // Handle regular number
+      answer = double.tryParse(input);
+    }
+
     if (answer != null) {
-      bool isCorrect = _currentQuestion!.isCorrect(answer);
+      bool isCorrect = answer == _currentQuestion!.correctAnswer;
 
       setState(() {
         _isCorrect = isCorrect;
@@ -138,8 +152,8 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
           i < _assignmentQuestions.length; i++) {
         questionResults.add(QuestionResult(
           questionText: _assignmentQuestions[i].question,
-          correctAnswer: _assignmentQuestions[i].correctAnswer,
-          userAnswer: _assignmentQuestions[i].correctAnswer,
+          correctAnswer: _assignmentQuestions[i].correctAnswer.toDouble(),
+          userAnswer: _assignmentQuestions[i].correctAnswer.toDouble(),
           isCorrect: i < _currentQuestionIndex ? true : false,
         ));
       }
@@ -406,7 +420,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                       ? Colors.white
                       : Colors.black,
                 ),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -569,7 +583,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 16),
               InkWell(
