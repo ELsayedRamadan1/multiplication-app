@@ -60,6 +60,24 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
       _totalQuestions = _assignmentQuestions.length;
       _currentQuestion = _assignmentQuestions[0];
       _currentQuestionIndex = 0;
+      // Prevent reopening a completed assignment: check server if current student already has a result
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          final res = await userProvider.getAssignmentResultForStudent(widget.assignment!.id);
+          if (res != null) {
+            // Already completed: inform and close
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('لقد أنهيت هذا الواجب سابقًا (${res.score}/${res.totalQuestions})')),
+              );
+              Navigator.of(context).pop();
+            }
+          }
+        } catch (_) {
+          // ignore errors here — allow opening the quiz and let save handle duplicates
+        }
+      });
     } else {
       _loadCustomQuestions();
     }
@@ -145,50 +163,65 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
     UserProvider userProvider = Provider.of<UserProvider>(
         context, listen: false);
 
-    if (widget.assignment != null) {
-      List<QuestionResult> questionResults = [];
+    // show loading dialog while saving
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
 
-      for (int i = 0; i <= _currentQuestionIndex &&
-          i < _assignmentQuestions.length; i++) {
-        questionResults.add(QuestionResult(
-          questionText: _assignmentQuestions[i].question,
-          correctAnswer: _assignmentQuestions[i].correctAnswer.toDouble(),
-          userAnswer: _assignmentQuestions[i].correctAnswer.toDouble(),
-          isCorrect: i < _currentQuestionIndex ? true : false,
-        ));
+    try {
+      if (widget.assignment != null) {
+        List<QuestionResult> questionResults = [];
+
+        for (int i = 0; i <= _currentQuestionIndex &&
+            i < _assignmentQuestions.length; i++) {
+          questionResults.add(QuestionResult(
+            questionText: _assignmentQuestions[i].question,
+            correctAnswer: _assignmentQuestions[i].correctAnswer.toDouble(),
+            userAnswer: _assignmentQuestions[i].correctAnswer.toDouble(),
+            isCorrect: i < _currentQuestionIndex ? true : false,
+          ));
+        }
+
+        await userProvider.saveCustomQuizResult(
+          assignmentId: widget.assignment!.id,
+          questionResults: questionResults,
+          score: _score,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+              'تم إنهاء الواجب! نتيجتك: $_score/${_assignmentQuestions.length}')),
+        );
+      } else {
+        if (userProvider.isLoggedIn) {
+          await userProvider.updateUserScore(_score, subject: 'custom_quiz');
+        }
+
+        StudentService service = StudentService();
+        StudentData student = StudentData(
+          name: widget.studentName,
+          score: _score,
+          totalQuestions: _totalQuestions,
+          answers: _answers,
+        );
+        await service.saveStudent(student);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+              'تم إنهاء الاختبار! نتيجتك: $_score/$_totalQuestions')),
+        );
       }
 
-      await userProvider.saveCustomQuizResult(
-        assignmentId: widget.assignment!.id,
-        questionResults: questionResults,
-        score: _score,
-      );
-
+      Navigator.of(context).pop(); // close loading
+      Navigator.of(context).pop(); // close quiz screen
+    } catch (e) {
+      Navigator.of(context).pop(); // close loading
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-            'تم إنهاء الواجب! نتيجتك: $_score/${_assignmentQuestions.length}')),
-      );
-    } else {
-      if (userProvider.isLoggedIn) {
-        await userProvider.updateUserScore(_score, subject: 'custom_quiz');
-      }
-
-      StudentService service = StudentService();
-      StudentData student = StudentData(
-        name: widget.studentName,
-        score: _score,
-        totalQuestions: _totalQuestions,
-        answers: _answers,
-      );
-      await service.saveStudent(student);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-            'تم إنهاء الاختبار! نتيجتك: $_score/$_totalQuestions')),
+        SnackBar(content: Text('حدث خطأ أثناء حفظ النتيجة: $e')),
       );
     }
-
-    Navigator.of(context).pop();
   }
 
   @override
@@ -310,7 +343,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen> with TickerProvider
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.purple.withOpacity(0.3),
+                        color: const Color.fromRGBO(128, 0, 128, 0.3),
                         spreadRadius: 2,
                         blurRadius: 5,
                       ),

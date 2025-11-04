@@ -16,6 +16,9 @@ class User {
   final String school;
   final int grade; // 1-6 for grades 1 through 6
   final int classNumber; // 1-10 for class numbers
+  // Optional defaults used by teachers to target students when creating assignments
+  final int? teacherDefaultGrade;
+  final int? teacherDefaultClassNumber;
 
   User({
     required this.id,
@@ -30,6 +33,8 @@ class User {
     required this.school,
     required this.grade,
     required this.classNumber,
+    this.teacherDefaultGrade,
+    this.teacherDefaultClassNumber,
   }) :
     createdAt = createdAt ?? DateTime.now(),
     subjectScores = subjectScores ?? {};
@@ -48,6 +53,8 @@ class User {
       'school': school,
       'grade': grade,
       'classNumber': classNumber,
+      'teacherDefaultGrade': teacherDefaultGrade,
+      'teacherDefaultClassNumber': teacherDefaultClassNumber,
     };
   }
 
@@ -65,6 +72,8 @@ class User {
       school: json['school'] ?? '',
       grade: json['grade'] ?? 1,
       classNumber: json['classNumber'] ?? 1,
+      teacherDefaultGrade: json['teacherDefaultGrade'],
+      teacherDefaultClassNumber: json['teacherDefaultClassNumber'],
     );
   }
 
@@ -79,6 +88,8 @@ class User {
     String? school,
     int? grade,
     int? classNumber,
+    int? teacherDefaultGrade,
+    int? teacherDefaultClassNumber,
   }) {
     return User(
       id: id,
@@ -93,6 +104,8 @@ class User {
       school: school ?? this.school,
       grade: grade ?? this.grade,
       classNumber: classNumber ?? this.classNumber,
+      teacherDefaultGrade: teacherDefaultGrade ?? this.teacherDefaultGrade,
+      teacherDefaultClassNumber: teacherDefaultClassNumber ?? this.teacherDefaultClassNumber,
     );
   }
 

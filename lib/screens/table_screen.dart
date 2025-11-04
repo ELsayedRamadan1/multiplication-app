@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/multiplication_table_model.dart';
 import '../theme_provider.dart';
+import '../widgets/custom_app_bar.dart';
 
 // Function to convert English digits to Arabic
 String _toArabicNumber(int number) {
@@ -23,12 +24,9 @@ class TableScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('جدول ${table.number}'),
-        backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-            ? Colors.black
-            : Colors.blue.shade800,
-        elevation: 0,
+      appBar: CustomAppBar(
+        title: 'جدول ${table.number}',
+        color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark ? Colors.black : Colors.blue.shade800,
       ),
       body: Container(
         decoration: BoxDecoration(

@@ -1,20 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/question_model.dart';
 import '../models/user_model.dart';
 import '../models/assignment_model.dart';
-import '../models/notification_model.dart';
 import 'auth_service.dart';
 import 'assignment_service.dart';
-import 'notification_service.dart';
 
 class UserProvider extends ChangeNotifier {
   final AuthService authService;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AssignmentService _assignmentService = AssignmentService();
-  final NotificationService _notificationService = NotificationService();
 
   User? _currentUser;
   bool _isLoading = true;
@@ -28,6 +23,28 @@ class UserProvider extends ChangeNotifier {
   UserProvider({required this.authService}) {
     _initializeUser();
     _listenToAuthChanges();
+  }
+
+  // Teacher default filters (optional)
+  int? _teacherDefaultGrade;
+  int? _teacherDefaultClassNumber;
+
+  int? get teacherDefaultGrade => _teacherDefaultGrade;
+  int? get teacherDefaultClassNumber => _teacherDefaultClassNumber;
+
+  Future<void> setTeacherDefaults({int? grade, int? classNumber}) async {
+    if (!isTeacher || _currentUser == null) return;
+    _teacherDefaultGrade = grade;
+    _teacherDefaultClassNumber = classNumber;
+    notifyListeners();
+
+    // persist in Firestore via AuthService
+    try {
+      await authService.updateTeacherDefaults(_currentUser!.id, grade: grade, classNumber: classNumber);
+    } catch (e) {
+      // ignore persistence errors but log
+      print('Failed to persist teacher defaults: $e');
+    }
   }
 
   // الاستماع لتغييرات حالة المصادقة
@@ -51,6 +68,12 @@ class UserProvider extends ChangeNotifier {
     } catch (e) {
       print('حدث خطأ أثناء تحميل المستخدم الحالي: $e');
       _currentUser = null;
+    }
+
+    // If the user document contains teacher defaults, populate provider state
+    if (_currentUser != null) {
+      _teacherDefaultGrade = _currentUser!.teacherDefaultGrade;
+      _teacherDefaultClassNumber = _currentUser!.teacherDefaultClassNumber;
     }
 
     _isLoading = false;
@@ -186,16 +209,34 @@ class UserProvider extends ChangeNotifier {
     return await _assignmentService.getAssignmentsByTeacher(_currentUser!.id);
   }
 
+  // Stream واجبات المعلم (real-time)
+  Stream<List<CustomAssignment>> streamTeacherAssignments() {
+    if (!isTeacher || _currentUser == null) return Stream.value([]);
+    return _assignmentService.streamAssignmentsByTeacher(_currentUser!.id);
+  }
+
   // الحصول على واجبات الطالب
   Future<List<CustomAssignment>> getStudentAssignments() async {
     if (!isStudent || _currentUser == null) return [];
     return await _assignmentService.getAssignmentsForStudent(_currentUser!.id);
   }
 
+  // Stream واجبات الطالب (real-time)
+  Stream<List<CustomAssignment>> streamStudentAssignments() {
+    if (!isStudent || _currentUser == null) return Stream.value([]);
+    return _assignmentService.streamAssignmentsForStudent(_currentUser!.id);
+  }
+
   // الحصول على الواجبات النشطة للطالب
   Future<List<CustomAssignment>> getActiveStudentAssignments() async {
     if (!isStudent || _currentUser == null) return [];
     return await _assignmentService.getActiveAssignmentsForStudent(_currentUser!.id);
+  }
+
+  // Stream للواجبات النشطة للطالب
+  Stream<List<CustomAssignment>> streamActiveStudentAssignments() {
+    if (!isStudent || _currentUser == null) return Stream.value([]);
+    return _assignmentService.streamActiveAssignmentsForStudent(_currentUser!.id);
   }
 
   // إنشاء واجب
@@ -211,8 +252,17 @@ class UserProvider extends ChangeNotifier {
       throw Exception('فقط المعلمون يمكنهم إنشاء المهام');
     }
 
+    // Double-check the current user's Firestore record and role
+    final userInFirestore = await authService.getCurrentUser();
+    if (userInFirestore == null) {
+      throw Exception('بيانات المعلم غير متاحة في الخادم. الرجاء تسجيل الخروج وتسجيل الدخول مرة أخرى.');
+    }
+    if (userInFirestore.role != UserRole.teacher) {
+      throw Exception('يجب أن يكون لديك حساب معلم لإنشاء واجبات');
+    }
+
     final assignment = CustomAssignment(
-      id: generateAssignmentId(),
+      id: '', // let Firestore generate id
       teacherId: _currentUser!.id,
       teacherName: _currentUser!.name,
       assignedStudentIds: assignedStudentIds,
@@ -223,15 +273,11 @@ class UserProvider extends ChangeNotifier {
       dueDate: dueDate,
     );
 
-    await _assignmentService.saveAssignment(assignment);
-
-    if (assignedStudentIds.isNotEmpty) {
-      await sendNotificationToStudents(
-        title: 'مهمة جديدة: ${assignment.title}',
-        message: 'لقد تم تعيين اختبار جديد لك، تحقق من المهام الآن!',
-        studentIds: assignedStudentIds,
-        assignmentId: assignment.id,
-      );
+    try {
+      await _assignmentService.saveAssignment(assignment);
+    } catch (e) {
+      // Re-throw with clearer message for UI
+      throw Exception('فشل في إنشاء الواجب: ${e.toString()}');
     }
 
     notifyListeners();
@@ -260,15 +306,26 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // الحصول على نتائج الواجب
+  // نتائج الواجب
   Future<List<CustomQuizResult>> getAssignmentResults(String assignmentId) async {
     return await _assignmentService.getResultsForAssignment(assignmentId);
   }
 
-  // الحصول على نتائج الطالب
+  // Stream نتائج الواجب
+  Stream<List<CustomQuizResult>> streamAssignmentResults(String assignmentId) {
+    return _assignmentService.streamResultsForAssignment(assignmentId);
+  }
+
+  // نتائج الطالب
   Future<List<CustomQuizResult>> getStudentResults() async {
     if (!isStudent || _currentUser == null) return [];
     return await _assignmentService.getResultsForStudent(_currentUser!.id);
+  }
+
+  // Stream نتائج الطالب
+  Stream<List<CustomQuizResult>> streamStudentResults() {
+    if (!isStudent || _currentUser == null) return Stream.value([]);
+    return _assignmentService.streamResultsForStudent(_currentUser!.id);
   }
 
   // الحصول على نتيجة واجب محدد للطالب
@@ -298,47 +355,23 @@ class UserProvider extends ChangeNotifier {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }
 
-  // الحصول على جميع الطلاب
-  Future<List<User>> getAllStudents() async {
+  // الحصول على جميع الطلاب أو حسب فلاتر (school, grade, classNumber)
+  Future<List<User>> getAllStudents({String? school, int? grade, int? classNumber}) async {
+    // If any filter is provided, use server-side query
+    if ((school != null && school.trim().isNotEmpty) || grade != null || classNumber != null) {
+      return await authService.queryUsers(
+        school: school,
+        grade: grade,
+        classNumber: classNumber,
+        onlyStudents: true,
+      );
+    }
+
+    // Fallback: fetch all and filter client-side (legacy behavior)
     return await authService.getAllUsers().then((users) =>
         users.where((user) => user.role == UserRole.student).toList());
   }
 
-  // دوال الإشعارات
-  Future<List<NotificationModel>> getUserNotifications() async {
-    if (_currentUser == null) return [];
-    return await _notificationService.getNotificationsForUser(_currentUser!.id);
-  }
-
-  Future<void> markNotificationAsRead(String notificationId) async {
-    await _notificationService.markAsRead(notificationId);
-    notifyListeners();
-  }
-
-  Future<void> markAllNotificationsAsRead() async {
-    if (_currentUser == null) return;
-    await _notificationService.markAllAsRead(_currentUser!.id);
-    notifyListeners();
-  }
-
-  Future<void> sendNotificationToStudents({
-    required String title,
-    required String message,
-    required List<String> studentIds,
-    String? assignmentId,
-  }) async {
-    if (!isTeacher) return;
-
-    for (String studentId in studentIds) {
-      await _notificationService.createNotification(
-        title: title,
-        message: message,
-        type: 'assignment',
-        assignmentId: assignmentId,
-        studentId: studentId,
-      );
-    }
-  }
 
   String getUserDisplayName() {
     return _currentUser?.name ?? 'مستخدم زائر';

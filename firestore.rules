@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper to read user doc (server-side get)
+    function userRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    // ---------------- users collection ----------------
+    match /users/{userId} {
+      // Any signed-in user can read (you can tighten this later)
+      allow read: if isSignedIn();
+
+      // A user can create/update/delete only their own user document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ---------------- assignments ----------------
+    match /assignments/{assignmentId} {
+      // Create: only signed-in teachers and teacherId must match the caller
+      allow create: if isSignedIn()
+        && userRole(request.auth.uid) == 1
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.questions is list
+        && request.resource.data.assignedStudentIds is list;
+
+      // Read single doc: teacher owner or assigned student
+      allow get: if isSignedIn() && (
+        (userRole(request.auth.uid) == 1 && resource.data.teacherId == request.auth.uid)
+        || (resource.data.assignedStudentIds is list && request.auth.uid in resource.data.assignedStudentIds)
+      );
+
+      // Query/list: allow signed-in users (client should query with filters like assignedStudentIds)
+      allow list: if isSignedIn();
+
+      // Update/Delete: only teacher owner
+      allow update, delete: if isSignedIn() && userRole(request.auth.uid) == 1 && resource.data.teacherId == request.auth.uid;
+    }
+
+    // ---------------- quiz_results ----------------
+    match /quiz_results/{resultId} {
+      // Create: only the student can create their own result doc
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.assignmentId is string
+        && request.resource.data.score is number;
+
+      // Read: student can read their own results; teacher of the assignment can read results for their assignments
+      allow get: if isSignedIn() && (
+        request.auth.uid == resource.data.studentId
+        || (get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.teacherId == request.auth.uid)
+      );
+
+      allow list: if isSignedIn();
+
+      // Prevent edits/deletes by clients (results should be append-only from clients)
+      allow update, delete: if false;
+    }
+
+    // ---------------- notifications ----------------
+    match /notifications/{notifId} {
+      // Create: teachers can create notifications for students; students can create 'assignment_completed' notifications addressed to teacher
+      allow create: if isSignedIn() && (
+        // teacher creating a student-targeted notification
+        (userRole(request.auth.uid) == 1 && request.resource.data.studentId is string && request.resource.data.title is string && request.resource.data.message is string)
+        // OR student creating an assignment_completed notification addressed to teacher
+        || (userRole(request.auth.uid) == 0 && request.resource.data.type == 'assignment_completed' && request.resource.data.teacherId is string && request.resource.data.studentId == request.auth.uid)
+      );
+
+      // Read: only the targeted recipient (student or teacher) may read their notifications
+      allow get: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid
+        || resource.data.teacherId == request.auth.uid
+      );
+
+      // List: signed in users can query but client must filter by their id (studentId or teacherId)
+      allow list: if isSignedIn();
+
+      // Update: allow recipient to mark their notification as read (isRead true)
+      allow update: if isSignedIn() && (
+        (resource.data.studentId == request.auth.uid || resource.data.teacherId == request.auth.uid)
+        && request.resource.data.isRead == true
+      );
+
+      // Delete: allow recipient to delete their notifications
+      allow delete: if isSignedIn() && (resource.data.studentId == request.auth.uid || resource.data.teacherId == request.auth.uid);
+    }
+
+    // Deny everything else by default
+  }
+}

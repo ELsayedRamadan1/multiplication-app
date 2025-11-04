@@ -4,6 +4,7 @@ import '../models/quiz_settings_model.dart';
 import '../theme_provider.dart';
 import 'quiz_screen.dart';
 import '../models/question_model.dart';
+import '../widgets/custom_app_bar.dart';
 
 class QuizSetupScreen extends StatefulWidget {
   final String studentName;
@@ -245,7 +246,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   }
                 });
               },
-              activeColor: Colors.green.shade800,
+              activeColor: Colors.blue,
             ),
             if (!_isRandomTable) ...[
               const SizedBox(height: 16),
@@ -372,13 +373,8 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('إعداد اختبار جديد'),
-        backgroundColor: themeProvider.themeMode == ThemeMode.dark
-            ? Colors.black
-            : Colors.green.shade800,
-        foregroundColor: Colors.white,
-      ),
+
+      appBar: const CustomAppBar(title: 'إعداد الاختبار'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -411,7 +407,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    backgroundColor: Colors.green.shade800,
+                    backgroundColor: Colors.blue,
                   ),
                   child: const Text(
                     'بدء الاختبار',

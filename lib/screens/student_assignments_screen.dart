@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/assignment_model.dart';
-import '../models/notification_model.dart';
-import '../models/question_model.dart';
-import '../services/assignment_service.dart';
-import '../services/notification_service.dart';
 import '../services/user_provider.dart';
-import '../theme_provider.dart';
 import 'custom_quiz_screen.dart';
+import '../widgets/custom_app_bar.dart';
 
 class StudentAssignmentsScreen extends StatefulWidget {
   const StudentAssignmentsScreen({super.key});
@@ -17,51 +13,18 @@ class StudentAssignmentsScreen extends StatefulWidget {
 }
 
 class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
-  List<CustomAssignment> _assignments = [];
-
-  final AssignmentService _assignmentService = AssignmentService();
-  final NotificationService _notificationService = NotificationService();
-  bool _isLoading = true;
-  List<NotificationModel> _notifications = [];
+  // Using real-time streams via UserProvider; no local state required
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // notifications will be fetched when building the UI
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final currentUser = userProvider.currentUser;
-      
-      if (currentUser != null) {
-        final assignments = await _assignmentService.getActiveAssignmentsForStudent(currentUser.id);
-        final notifications = await _notificationService.getNotificationsForUser(currentUser.id);
-        
-        if (mounted) {
-          setState(() {
-            _assignments = assignments;
-            _notifications = notifications;
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في تحميل البيانات: $e')),
-        );
-      }
-    }
-  }
-
+  // helper to start assignment
   void _handleStartAssignment(CustomAssignment assignment) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final currentUser = userProvider.currentUser;
-    
     if (currentUser == null) return;
 
     Navigator.push(
@@ -79,199 +42,149 @@ class _StudentAssignmentsScreenState extends State<StudentAssignmentsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الواجبات المطلوبة'),
-        centerTitle: true,
-        backgroundColor: isDarkMode ? Colors.black : Colors.blue.shade800,
-        elevation: 0,
+      appBar: CustomAppBar(
+        title: 'الواجبات المطلوبة',
+        color: isDarkMode ? Colors.black : Colors.blue.shade800,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: () => setState(() {}),
             tooltip: 'تحديث',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _assignments.isEmpty
-              ? const Center(
+      body: Builder(
+        builder: (context) {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+          return StreamBuilder<List<CustomAssignment>>(
+            stream: userProvider.streamActiveStudentAssignments(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final assignments = snapshot.data ?? [];
+
+              if (assignments.isEmpty) {
+                return const Center(
                   child: Text(
                     'لا توجد واجبات حالياً',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: _assignments.length,
-                    itemBuilder: (context, index) {
-                      final assignment = _assignments[index];
-                      final hasNewNotification = _notifications.any(
-                        (n) => n.assignmentId == assignment.id && !n.isRead,
-                      );
-                      
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          vertical: 8.0,
-                          horizontal: 4.0,
+                );
+              }
+
+              return RefreshIndicator(
+                onRefresh: () async => setState(() {}),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: assignments.length,
+                  itemBuilder: (context, index) {
+                    final assignment = assignments[index];
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                      elevation: 2,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                        title: Text(
+                          assignment.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        elevation: 2,
-                        child: ListTile(
-                          title: Row(
-                            children: [
-                              if (hasNewNotification)
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  margin: const EdgeInsets.only(left: 8),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              Expanded(
-                                child: Text(
-                                  assignment.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                        subtitle: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (assignment.description != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                                child: Text(assignment.description!),
                               ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (assignment.description != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4, bottom: 4),
-                                  child: Text(
-                                    assignment.description!,
-                                    style: TextStyle(
-                                      color: isDarkMode 
-                                          ? Colors.grey[400] 
-                                          : Colors.grey[800],
-                                    ),
+                            Text('الأسئلة: ${assignment.questions.length}'),
+                            Text('المعلم: ${assignment.teacherName}'),
+                          ],
+                        ),
+                        trailing: FutureBuilder<CustomQuizResult?>(
+                          // Check whether the current student already has a result for this assignment
+                          future: userProvider.getAssignmentResultForStudent(assignment.id),
+                          builder: (context, resultSnapshot) {
+                            if (resultSnapshot.connectionState == ConnectionState.waiting) {
+                              return SizedBox(
+                                width: 90,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
                                   ),
                                 ),
-                              if (assignment.dueDate != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.calendar_today,
-                                        size: 16,
-                                        color: Colors.grey,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'تاريخ التسليم: ${assignment.dueDate!.toLocal().toString().split(' ')[0]}',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 12,
+                              );
+                            }
+
+                            final existingResult = resultSnapshot.data;
+
+                            if (existingResult != null) {
+                              // Student already completed — show compact disabled button with summary
+                              return SizedBox(
+                                width: 90,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      height: 32,
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: null,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.grey,
+                                          padding: EdgeInsets.zero,
+                                          textStyle: const TextStyle(fontSize: 13),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                         ),
+                                        child: const FittedBox(fit: BoxFit.scaleDown, child: Padding(padding: EdgeInsets.symmetric(horizontal:6), child: Text('منتهي'))),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.person,
-                                    size: 16,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'المعلم: ${assignment.teacherName}',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 12,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: ElevatedButton(
-                            onPressed: () => _handleStartAssignment(assignment),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDarkMode 
-                                  ? Colors.blue[700] 
-                                  : Colors.blue[600],
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('بدء الحل'),
-                          ),
-                          onTap: () => _handleStartAssignment(assignment),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${existingResult.score}/${existingResult.totalQuestions}',
+                                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            // Not completed — allow starting the assignment
+                            return ElevatedButton(
+                              onPressed: () => _handleStartAssignment(assignment),
+                              child: const Text('بدء الحل'),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+                        onTap: () async {
+                          // Prevent tapping into the assignment if student already completed it
+                          final existing = await userProvider.getAssignmentResultForStudent(assignment.id);
+                          if (existing != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('لقد أنهيت هذا الواجب سابقًا (${existing.score}/${existing.totalQuestions})')),
+                            );
+                            return;
+                          }
+
+                          _handleStartAssignment(assignment);
+                        },
+                      ),
+                    );
+                  },
                 ),
-      );
-
-  }
-
-  void _showAssignmentDetails(CustomAssignment assignment) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(assignment.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (assignment.description != null && assignment.description!.isNotEmpty)
-              Text('الوصف: ${assignment.description!}'),
-            Text('الاسئلة: ${assignment.questions.length}'),
-            Text('المعلم: ${assignment.teacherName}'),
-            Text('تاريخ الاسنحقاق : ${assignment.dueDate ?? 'No due date'}'),
-            const SizedBox(height: 16),
-            Text('معاينة السؤال', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Container(
-              height: 150,
-              width: double.maxFinite,
-              child: ListView.builder(
-                itemCount: assignment.questions.length > 3 ? 3 : assignment.questions.length,
-                itemBuilder: (context, index) {
-                  Question question = assignment.questions[index];
-                  return Text(
-                    '${index + 1}. ${question.question.length > 50 ? '${question.question.substring(0, 50)}...' : question.question}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  );
-                },
-              ),
-            ),
-            if (assignment.questions.length > 3)
-              Text('... و ${assignment.questions.length - 3} اسئلة اكثر'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('اغلق'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _startAssignment(assignment);
+              );
             },
-            child: Text('ابدا الواجب'),
-          ),
-        ],
+          );
+        },
       ),
     );
-  }
-
-  void _startAssignment(CustomAssignment assignment) {
-    _handleStartAssignment(assignment);
   }
 }

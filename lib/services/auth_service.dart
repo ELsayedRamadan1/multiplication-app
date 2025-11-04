@@ -87,7 +87,7 @@ class AuthService {
       if (e.code == 'user-not-found') {
         throw Exception('لا يوجد مستخدم بهذا البريد الإلكتروني');
       } else if (e.code == 'wrong-password') {
-        throw Exception('كلمة المرور غير صحيحة');
+        throw Exception('كلمة المر��ر غير صحيحة');
       } else if (e.code == 'invalid-email') {
         throw Exception('البريد الإلكتروني غير صالح');
       } else if (e.code == 'user-disabled') {
@@ -187,7 +187,6 @@ class AuthService {
 
       return User.fromJson(doc.data() as Map<String, dynamic>);
     } catch (e) {
-      print('خطأ في جلب بيانات المستخدم: $e');
       return null;
     }
   }
@@ -226,7 +225,7 @@ class AuthService {
       await _auth.sendPasswordResetEmail(email: email);
     } on firebase_auth.FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
-        throw Exception('لا يوجد مستخدم بهذا البريد الإلكتروني');
+        throw Exception('لا يوجد مست��دم بهذا البريد الإلكتروني');
       } else if (e.code == 'invalid-email') {
         throw Exception('البريد الإلكتروني غير صالح');
       } else {
@@ -265,15 +264,60 @@ class AuthService {
     try {
       final snapshot = await _firestore.collection('users').get();
       return snapshot.docs
-          .map((doc) => User.fromJson(doc.data() as Map<String, dynamic>))
+          .map((doc) => User.fromJson(doc.data()))
           .toList();
     } catch (e) {
       throw Exception('حدث خطأ أثناء جلب المستخدمين: $e');
     }
   }
 
+  // Query users with optional filters. Server-side filtering is much faster for large collections.
+  Future<List<User>> queryUsers({String? school, int? grade, int? classNumber, bool onlyStudents = true}) async {
+    try {
+      Query collectionQuery = _firestore.collection('users');
+
+      if (onlyStudents) {
+        // role stored as index in the document
+        collectionQuery = collectionQuery.where('role', isEqualTo: UserRole.student.index);
+      }
+
+      if (school != null && school.trim().isNotEmpty) {
+        // Use case-insensitive matching via where on exact value; if you need partial contains,
+        // consider adding a normalized field or using a third-party search. Here we use exact match.
+        collectionQuery = collectionQuery.where('school', isEqualTo: school.trim());
+      }
+
+      if (grade != null) {
+        collectionQuery = collectionQuery.where('grade', isEqualTo: grade);
+      }
+
+      if (classNumber != null) {
+        collectionQuery = collectionQuery.where('classNumber', isEqualTo: classNumber);
+      }
+
+      final snapshot = await collectionQuery.get();
+      return snapshot.docs.map((d) => User.fromJson(d.data() as Map<String, dynamic>)).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء استعلام المستخدمين: $e');
+    }
+  }
+
   // ✅ التحقق من حالة تسجيل الدخول
   bool isLoggedIn() {
     return _auth.currentUser != null;
+  }
+
+  // تحديث تخزين إعدادات المعلم الافتراضية (الصف والفصل) في مستند المستخدم
+  Future<void> updateTeacherDefaults(String userId, {int? grade, int? classNumber}) async {
+    try {
+      final data = <String, Object?>{};
+      if (grade != null) data['teacherDefaultGrade'] = grade;
+      if (classNumber != null) data['teacherDefaultClassNumber'] = classNumber;
+      if (data.isNotEmpty) {
+        await _firestore.collection('users').doc(userId).update(data);
+      }
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء حفظ إعدادات المعلم: $e');
+    }
   }
 }

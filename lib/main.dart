@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:multiplication_table_app/screens/home_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
+import 'screens/teacher_assignments_screen.dart';
 import 'services/user_provider.dart';
 import 'services/auth_service.dart';
 import 'theme_provider.dart';
@@ -83,6 +85,12 @@ class MyApp extends StatelessWidget {
             ),
             scaffoldBackgroundColor: Colors.grey.shade50,
             useMaterial3: true,
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.blue.shade800,
+              toolbarHeight: 64,
+              titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
+              iconTheme: const IconThemeData(color: Colors.white),
+            ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 5,
@@ -99,6 +107,12 @@ class MyApp extends StatelessWidget {
             ),
             scaffoldBackgroundColor: Colors.grey.shade900,
             useMaterial3: true,
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.black,
+              toolbarHeight: 64,
+              titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
+              iconTheme: const IconThemeData(color: Colors.white),
+            ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 5,
@@ -107,7 +121,13 @@ class MyApp extends StatelessWidget {
             ),
           ),
           themeMode: themeProvider.themeMode,
-          home: const SplashScreen(),
+          initialRoute: '/splash',
+          routes: {
+            '/splash': (context) => const SplashScreen(),
+            '/home': (context) => const HomeScreen(),
+            '/teacher/assignments': (context) => const TeacherAssignmentsScreen(),
+            // Add other routes here as needed
+          },
         );
       },
     );

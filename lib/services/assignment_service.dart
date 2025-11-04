@@ -1,208 +1,255 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/assignment_model.dart';
-import 'notification_service.dart';
-
 
 class AssignmentService {
-  static const String _assignmentsKey = 'custom_assignments';
-  static const String _resultsKey = 'custom_quiz_results';
+  static const String _assignmentsCollection = 'assignments';
+  static const String _resultsCollection = 'quiz_results';
 
-  final NotificationService _notificationService = NotificationService();
-  final _random = Random();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Generate a unique ID for assignments
-  String _generateId() {
-    return DateTime.now().millisecondsSinceEpoch.toString() + _random.nextInt(1000).toString();
-  }
-
-  // Save a new assignment and notify students
+  // Save a new or existing assignment to Firestore
   Future<void> saveAssignment(CustomAssignment assignment, {bool notifyStudents = true}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final assignments = await getAllAssignments();
-
-    // Generate ID if new assignment
-    if (assignment.id.isEmpty) {
-      assignment = assignment.copyWith(id: _generateId());
-    }
-
-    // Check if assignment already exists, update it
-    final existingIndex = assignments.indexWhere((a) => a.id == assignment.id);
-    if (existingIndex >= 0) {
-      assignments[existingIndex] = assignment;
-    } else {
-      assignments.add(assignment);
-    }
-
-    final assignmentsJson = assignments.map((a) => a.toJson()).toList();
-    await prefs.setString(_assignmentsKey, jsonEncode(assignmentsJson));
-
-    // Notify students about new assignment
-    if (notifyStudents) {
-      for (final studentId in assignment.assignedStudentIds) {
-        await _notificationService.createNotification(
-          title: 'واجب جديد',
-          message: 'لديك واجب جديد: ${assignment.title}',
-          type: 'assignment',
-          assignmentId: assignment.id,
-          studentId: studentId,
-        );
-      }
-    }
-  }
-
-  // Get all assignments
-  Future<List<CustomAssignment>> getAllAssignments() async {
-    final prefs = await SharedPreferences.getInstance();
-    final assignmentsJson = prefs.getString(_assignmentsKey);
-
-    if (assignmentsJson == null) return [];
-
-    final List assignments = jsonDecode(assignmentsJson);
-    return assignments.map((json) => CustomAssignment.fromJson(json)).toList();
-  }
-
-  // Get assignments for a specific teacher
-  Future<List<CustomAssignment>> getAssignmentsByTeacher(String teacherId) async {
-    final assignments = await getAllAssignments();
-    return assignments.where((a) => a.teacherId == teacherId).toList();
-  }
-
-  // Get students assigned to an assignment
-  Future<List<String>> getAssignedStudents(String assignmentId) async {
-    final assignments = await getAllAssignments();
-    final assignment = assignments.firstWhere(
-      (a) => a.id == assignmentId,
-      orElse: () => CustomAssignment(
-        id: '',
-        teacherId: '',
-        teacherName: '',
-        assignedStudentIds: [],
-        assignedStudentNames: [],
-        questions: [],
-        title: '',
-      ),
-    );
-    return assignment.assignedStudentIds;
-  }
-
-  // Mark assignment as completed by student
-  Future<void> completeAssignment(String assignmentId, String studentId, int score) async {
-    final assignments = await getAllAssignments();
-    final assignmentIndex = assignments.indexWhere((a) => a.id == assignmentId);
-    
-    if (assignmentIndex != -1) {
-      // In a real app, you would save the student's answers and score here
-      // For now, we'll just mark it as completed and notify the teacher
-      await _notificationService.createNotification(
-        title: 'تم حل الواجب',
-        message: 'قام الطالب بحل الواجب بنجاح',
-        type: 'assignment_completed',
-        assignmentId: assignmentId,
-        studentId: studentId,
-      );
-    }
-  }
-
-  // Get active assignments for a specific student
-  Future<List<CustomAssignment>> getActiveAssignmentsForStudent(String studentId) async {
-    final assignments = await getAllAssignments();
-    return assignments.where((a) => a.isActive && a.isAssignedToStudent(studentId)).toList();
-  }
-
-  // Get assignments assigned to a specific student
-  Future<List<CustomAssignment>> getAssignmentsForStudent(String studentId) async {
-    final assignments = await getAllAssignments();
-    return assignments.where((a) => a.isAssignedToStudent(studentId)).toList();
-  }
-
-  // Save quiz result
-  Future<void> saveQuizResult(CustomQuizResult result) async {
-    final prefs = await SharedPreferences.getInstance();
-    final results = await getAllQuizResults();
-
-    // Remove any existing result for the same assignment and student
-    results.removeWhere((r) => r.assignmentId == result.assignmentId && r.studentId == result.studentId);
-
-    results.add(result);
-
-    final resultsJson = results.map((r) => r.toJson()).toList();
-    await prefs.setString(_resultsKey, jsonEncode(resultsJson));
-  }
-
-  // Get all quiz results
-  Future<List<CustomQuizResult>> getAllQuizResults() async {
-    final prefs = await SharedPreferences.getInstance();
-    final resultsJson = prefs.getString(_resultsKey);
-
-    if (resultsJson == null) return [];
-
-    final List results = jsonDecode(resultsJson);
-    return results.map((json) => CustomQuizResult.fromJson(json)).toList();
-  }
-
-  // Get results for a specific assignment
-  Future<List<CustomQuizResult>> getResultsForAssignment(String assignmentId) async {
-    final results = await getAllQuizResults();
-    return results.where((r) => r.assignmentId == assignmentId).toList();
-  }
-
-  // Get results for a specific student
-  Future<List<CustomQuizResult>> getResultsForStudent(String studentId) async {
-    final results = await getAllQuizResults();
-    return results.where((r) => r.studentId == studentId).toList();
-  }
-
-  // Get result for specific assignment and student
-  Future<CustomQuizResult?> getResultForAssignmentAndStudent(String assignmentId, String studentId) async {
-    final results = await getAllQuizResults();
     try {
-      return results.firstWhere((r) => r.assignmentId == assignmentId && r.studentId == studentId);
+      final docRef = assignment.id.isEmpty
+          ? _firestore.collection(_assignmentsCollection).doc()
+          : _firestore.collection(_assignmentsCollection).doc(assignment.id);
+
+      final id = docRef.id;
+      final assignmentToSave = assignment.id.isEmpty ? assignment.copyWith(id: id) : assignment;
+
+      await docRef.set(assignmentToSave.toJson());
+
+      // Notifications have been removed by request; assignment is saved for teacher/student access via Firestore
     } catch (e) {
-      return null;
+      throw Exception('حدث خطأ أثناء حفظ الواجب: $e');
     }
   }
 
-  // Delete an assignment
-  Future<void> deleteAssignment(String assignmentId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final assignments = await getAllAssignments();
-    assignments.removeWhere((a) => a.id == assignmentId);
-
-    final assignmentsJson = assignments.map((a) => a.toJson()).toList();
-    await prefs.setString(_assignmentsKey, jsonEncode(assignmentsJson));
-
-    // Also delete related results
-    final results = await getAllQuizResults();
-    results.removeWhere((r) => r.assignmentId == assignmentId);
-    final resultsJson = results.map((r) => r.toJson()).toList();
-    await prefs.setString(_resultsKey, jsonEncode(resultsJson));
+  // Get all assignments (one-time)
+  Future<List<CustomAssignment>> getAllAssignments() async {
+    try {
+      final snapshot = await _firestore.collection(_assignmentsCollection).get();
+      return snapshot.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب الواجبات: $e');
+    }
   }
 
-  // Update assignment status
+  Future<List<CustomAssignment>> getAssignmentsByTeacher(String teacherId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_assignmentsCollection)
+          .where('teacherId', isEqualTo: teacherId)
+          .get();
+      return snapshot.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب واجبات المعلم: $e');
+    }
+  }
+
+  Future<List<String>> getAssignedStudents(String assignmentId) async {
+    try {
+      final doc = await _firestore.collection(_assignmentsCollection).doc(assignmentId).get();
+      if (!doc.exists) return [];
+      final data = doc.data()!;
+      final ids = (data['assignedStudentIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      return ids;
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب طلاب الواجب: $e');
+    }
+  }
+
+  // Marks completion and creates a lightweight result document
+  Future<void> completeAssignment(String assignmentId, String studentId, int score) async {
+    try {
+      final docId = '${assignmentId}_$studentId';
+      await _firestore.collection(_resultsCollection).doc(docId).set({
+        'assignmentId': assignmentId,
+        'studentId': studentId,
+        'score': score,
+        'completedAt': DateTime.now().toIso8601String(),
+      });
+
+      // Notifications removed: do not create notifications on completion
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء إكمال الواجب: $e');
+    }
+  }
+
+  Future<List<CustomAssignment>> getActiveAssignmentsForStudent(String studentId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_assignmentsCollection)
+          .where('isActive', isEqualTo: true)
+          .where('assignedStudentIds', arrayContains: studentId)
+          .get();
+      return snapshot.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب الواجبات النشطة: $e');
+    }
+  }
+
+  Future<List<CustomAssignment>> getAssignmentsForStudent(String studentId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_assignmentsCollection)
+          .where('assignedStudentIds', arrayContains: studentId)
+          .get();
+      return snapshot.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب واجبات الطالب: $e');
+    }
+  }
+
+  Future<void> saveQuizResult(CustomQuizResult result) async {
+    try {
+      final docId = '${result.assignmentId}_${result.studentId}';
+      final docRef = _firestore.collection(_resultsCollection).doc(docId);
+
+      // Prevent overwriting an existing result (disallow retakes)
+      final existing = await docRef.get();
+      if (existing.exists) {
+        throw Exception('تم إنهاء هذا الواجب سابقًا');
+      }
+
+      await docRef.set(result.toJson());
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء حفظ نتيجة الاختبار: $e');
+    }
+  }
+
+  Future<List<CustomQuizResult>> getAllQuizResults() async {
+    try {
+      final snapshot = await _firestore.collection(_resultsCollection).get();
+      return snapshot.docs.map((d) => CustomQuizResult.fromJson({...d.data()})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب نتائج الاختبارات: $e');
+    }
+  }
+
+  Future<List<CustomQuizResult>> getResultsForAssignment(String assignmentId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_resultsCollection)
+          .where('assignmentId', isEqualTo: assignmentId)
+          .get();
+      return snapshot.docs.map((d) => CustomQuizResult.fromJson({...d.data()})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب نتائج الواجب: $e');
+    }
+  }
+
+  Future<List<CustomQuizResult>> getResultsForStudent(String studentId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_resultsCollection)
+          .where('studentId', isEqualTo: studentId)
+          .get();
+      return snapshot.docs.map((d) => CustomQuizResult.fromJson({...d.data()})).toList();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب نتائج الطالب: $e');
+    }
+  }
+
+  Future<CustomQuizResult?> getResultForAssignmentAndStudent(String assignmentId, String studentId) async {
+    try {
+      final docId = '${assignmentId}_$studentId';
+      final doc = await _firestore.collection(_resultsCollection).doc(docId).get();
+      if (!doc.exists) return null;
+      return CustomQuizResult.fromJson({...doc.data()!});
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء جلب نتيجة الاختبار: $e');
+    }
+  }
+
+  Future<void> deleteAssignment(String assignmentId) async {
+    try {
+      await _firestore.collection(_assignmentsCollection).doc(assignmentId).delete();
+
+      // delete results
+      final results = await _firestore
+          .collection(_resultsCollection)
+          .where('assignmentId', isEqualTo: assignmentId)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final d in results.docs) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء حذف الواجب: $e');
+    }
+  }
+
   Future<void> updateAssignmentStatus(String assignmentId, bool isActive) async {
-    final prefs = await SharedPreferences.getInstance();
-    final assignments = await getAllAssignments();
-    final index = assignments.indexWhere((a) => a.id == assignmentId);
+    try {
+      await _firestore.collection(_assignmentsCollection).doc(assignmentId).update({'isActive': isActive});
+    } catch (e) {
+      throw Exception('حدث خطأ أثناء تحديث حالة الواجب: $e');
+    }
+  }
 
-    if (index >= 0) {
-      assignments[index] = CustomAssignment(
-        id: assignments[index].id,
-        teacherId: assignments[index].teacherId,
-        teacherName: assignments[index].teacherName,
-        assignedStudentIds: assignments[index].assignedStudentIds,
-        assignedStudentNames: assignments[index].assignedStudentNames,
-        questions: assignments[index].questions,
-        title: assignments[index].title,
-        description: assignments[index].description,
-        createdAt: assignments[index].createdAt,
-        dueDate: assignments[index].dueDate,
-        isActive: isActive,
-      );
+  // ============ Real-time Streams ============
 
-      final assignmentsJson = assignments.map((a) => a.toJson()).toList();
-      await prefs.setString(_assignmentsKey, jsonEncode(assignmentsJson));
+  Stream<List<CustomAssignment>> streamAssignmentsByTeacher(String teacherId) {
+    try {
+      return _firestore
+          .collection(_assignmentsCollection)
+          .where('teacherId', isEqualTo: teacherId)
+          .snapshots()
+          .map((s) => s.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList());
+    } catch (e) {
+      return Stream.value([]);
+    }
+  }
+
+  Stream<List<CustomAssignment>> streamActiveAssignmentsForStudent(String studentId) {
+    try {
+      return _firestore
+          .collection(_assignmentsCollection)
+          .where('isActive', isEqualTo: true)
+          .where('assignedStudentIds', arrayContains: studentId)
+          .snapshots()
+          .map((s) => s.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList());
+    } catch (e) {
+      return Stream.value([]);
+    }
+  }
+
+  Stream<List<CustomAssignment>> streamAssignmentsForStudent(String studentId) {
+    try {
+      return _firestore
+          .collection(_assignmentsCollection)
+          .where('assignedStudentIds', arrayContains: studentId)
+          .snapshots()
+          .map((s) => s.docs.map((d) => CustomAssignment.fromJson({...d.data(), 'id': d.id})).toList());
+    } catch (e) {
+      return Stream.value([]);
+    }
+  }
+
+  Stream<List<CustomQuizResult>> streamResultsForAssignment(String assignmentId) {
+    try {
+      return _firestore
+          .collection(_resultsCollection)
+          .where('assignmentId', isEqualTo: assignmentId)
+          .snapshots()
+          .map((s) => s.docs.map((d) => CustomQuizResult.fromJson({...d.data()})).toList());
+    } catch (e) {
+      return Stream.value([]);
+    }
+  }
+
+  Stream<List<CustomQuizResult>> streamResultsForStudent(String studentId) {
+    try {
+      return _firestore
+          .collection(_resultsCollection)
+          .where('studentId', isEqualTo: studentId)
+          .snapshots()
+          .map((s) => s.docs.map((d) => CustomQuizResult.fromJson({...d.data()})).toList());
+    } catch (e) {
+      return Stream.value([]);
     }
   }
 

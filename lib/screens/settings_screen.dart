@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../theme_provider.dart';
 import '../services/user_provider.dart';
+import '../widgets/custom_app_bar.dart';
 import 'login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -166,13 +167,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الإعدادات'),
-        backgroundColor: themeProvider.themeMode == ThemeMode.dark
-            ? Colors.black
-            : Colors.purple.shade800,
-        elevation: 0,
-      ),
+      appBar: const CustomAppBar(title: 'الإعدادات '),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Container(
@@ -218,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             : 'U',
                                         style: const TextStyle(
                                           fontSize: 32,
-                                          color: Colors.purple,
+                                          color: Colors.blue,
                                         ),
                                       )
                                     : null,
@@ -228,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 right: 0,
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.purple,
+                                    color: Colors.blue,
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: themeProvider.themeMode == ThemeMode.dark 
@@ -320,7 +316,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             : Icons.light_mode,
                         color: themeProvider.themeMode == ThemeMode.dark
                             ? Colors.amber
-                            : Colors.purple,
+                            : Colors.blue,
                       ),
                       title: Text(
                         'الوضع الليلي',
@@ -336,8 +332,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (bool value) {
                           themeProvider.toggleTheme();
                         },
-                        activeColor: Colors.purple,
-                        activeTrackColor: Colors.purple.shade200,
+                        activeColor: Colors.blue,
+                        activeTrackColor: Colors.blue.shade200,
                       ),
                     ),
                   ),
