@@ -25,7 +25,7 @@ class TableScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'جدول ${table.number}',
+        title: 'جدول ${_toArabicNumber(table.number)}',
         color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark ? Colors.black : Colors.blue.shade800,
       ),
       body: Container(
@@ -55,7 +55,8 @@ class TableScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
+                    // Use withAlpha instead of withOpacity to avoid deprecation warning
+                    color: Colors.grey.withAlpha(51),
                     spreadRadius: 2,
                     blurRadius: 5,
                     offset: const Offset(0, 3),
@@ -72,7 +73,7 @@ class TableScreen extends StatelessWidget {
                 title: Text(
                   '${_toArabicNumber(table.number)} × ${_toArabicNumber(multiplier)} = ${_toArabicNumber(result)}',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                  textDirection: TextDirection.rtl,
+                  textDirection: TextDirection.ltr,
                 ),
                 trailing: Icon(Icons.arrow_forward, color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
                     ? Colors.blueAccent

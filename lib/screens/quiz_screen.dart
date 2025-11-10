@@ -171,13 +171,32 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     });
   }
 
-  void _finishQuiz() async {
-    // Check if minimum questions are answered
-    if (_totalQuestions < widget.minQuestions) {
+  // Helper: block back/navigation unless minimum answered or max reached
+  Future<bool> _canExit() async {
+    final answered = _currentQuestionIndex; // number of answered questions so far
+    if (answered < widget.minQuestions && answered < widget.maxQuestions) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('يجب الإجابة على الأقل على ${_toArabicNumerals(widget.minQuestions.toString())} أسئلة'),
+            content: Text('لا يمكنك الخروج الآن. يجب الإجابة على الأقل على ${_toArabicNumerals(widget.minQuestions.toString())} أسئلة أو إكمال ${_toArabicNumerals(widget.maxQuestions.toString())}.'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
+  void _finishQuiz() async {
+    // Prevent finishing if the student hasn't answered the minimum required questions
+    final answered = _currentQuestionIndex;
+    if (answered < widget.minQuestions) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يجب الإجابة على الأقل على ${_toArabicNumerals(widget.minQuestions.toString())} أسئلة قبل إنهاء الاختبار'),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
           ),
@@ -220,29 +239,32 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _canExit,
+      child: Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text('اختبار جدول الضرب'),
-            if (_totalQuestions > 0)
-              Text(
-                'السؤال ${_toArabicNumerals((_currentQuestionIndex + 1).toString())} من ${_toArabicNumerals(_totalQuestions.toString())}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withOpacity(0.8),
-                ),
-              ),
-          ],
-        ),
-        backgroundColor: Provider
-            .of<ThemeProvider>(context)
-            .themeMode == ThemeMode.dark
-            ? Colors.black
-            : Colors.green.shade800,
-        elevation: 0,
-      ),
-      body: Container(
+         title: Column(
+           crossAxisAlignment: CrossAxisAlignment.end,
+           children: [
+             Text('اختبار جدول الضرب'),
+             if (_totalQuestions > 0)
+               Text(
+                 'السؤال ${_toArabicNumerals((_currentQuestionIndex + 1).toString())} من ${_toArabicNumerals(_totalQuestions.toString())}',
+                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                   color: Colors.white.withOpacity(0.8),
+                 ),
+               ),
+           ],
+         ),
+         backgroundColor: Provider
+             .of<ThemeProvider>(context)
+             .themeMode == ThemeMode.dark
+             ? Colors.black
+             : Colors.green.shade800,
+         elevation: 0,
+         automaticallyImplyLeading: false,
+       ),
+       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -297,6 +319,8 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                   opacity: _fadeAnimation,
                   child: Text(
                     '${_toArabicNumerals(_currentQuestion.a.toString())} ${_getOperationSymbol(_currentQuestion.operation)} ${_toArabicNumerals(_currentQuestion.b.toString())} = ؟',
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
@@ -485,6 +509,6 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
           ),
         ),
       ),
-    );
+    ));
   }
 }

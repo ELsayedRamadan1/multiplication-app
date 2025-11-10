@@ -1,9 +1,23 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/student_data_model.dart' show StudentData;
+import 'dart:async';
 
 class StudentService {
   static const String _key = 'student_data';
+
+  // Broadcast controller so multiple listeners can receive updates
+  static final StreamController<List<StudentData>> _studentsController = StreamController<List<StudentData>>.broadcast();
+
+  /// Returns a stream that emits current list of students and subsequent updates
+  Stream<List<StudentData>> streamStudents() {
+    // Emit current snapshot asynchronously when someone subscribes
+    Future.microtask(() async {
+      final current = await getStudents();
+      if (!_studentsController.isClosed) _studentsController.add(current);
+    });
+    return _studentsController.stream;
+  }
 
   Future<List<StudentData>> getStudents() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -43,15 +57,33 @@ class StudentService {
     List<String> data = prefs.getStringList(_key) ?? [];
     data.add(jsonEncode(student.toJson()));
     await prefs.setStringList(_key, data);
+
+    // After saving, notify stream listeners with updated list
+    try {
+      final updated = await getStudents();
+      if (!_studentsController.isClosed) _studentsController.add(updated);
+    } catch (_) {
+      // ignore
+    }
   }
 
   Future<void> clearData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
+
+    // Emit empty list
+    if (!_studentsController.isClosed) _studentsController.add([]);
   }
 
   // Alias for getStudents to maintain backward compatibility
   Future<List<StudentData>> getAllStudents() async {
     return await getStudents();
+  }
+
+  // Dispose controller when app closes (optional)
+  static Future<void> disposeController() async {
+    try {
+      await _studentsController.close();
+    } catch (_) {}
   }
 }

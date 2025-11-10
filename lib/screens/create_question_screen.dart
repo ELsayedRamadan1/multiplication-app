@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'dart:math';
 import '../models/assignment_model.dart';
 import '../models/question_model.dart';
 import '../models/user_model.dart';
@@ -21,8 +22,11 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _answerController = TextEditingController();
   final TextEditingController _explanationController = TextEditingController();
-  final TextEditingController _assignmentTitleController = TextEditingController();
-  final TextEditingController _assignmentDescriptionController = TextEditingController();
+  final TextEditingController _assignmentTitleController =
+      TextEditingController();
+  final TextEditingController _assignmentDescriptionController =
+      TextEditingController();
+  DateTime? _assignmentDueDate; // optional due date for assignments
   QuestionType _selectedType = QuestionType.customText;
   XFile? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
@@ -32,7 +36,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final List<String> _selectedStudentNames = [];
   final List<String> _selectedQuestionIds = [];
   bool _isCreatingAssignment = false;
-  
+
   // Moved from dialog local state
   bool _isLoadingStudents = false;
   List<User> _allStudents = [];
@@ -57,20 +61,26 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       );
 
       if (image != null) {
+        if (!mounted) return;
         setState(() {
           _selectedImage = image;
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error selecting image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error selecting image: $e')));
     }
   }
 
   Future<void> _loadAssignments() async {
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
-    List<CustomAssignment> assignments = await userProvider.getTeacherAssignments();
+    UserProvider userProvider = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    );
+    List<CustomAssignment> assignments = await userProvider
+        .getTeacherAssignments();
+    if (!mounted) return;
     setState(() {
       _assignments = assignments;
     });
@@ -78,6 +88,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
   Future<void> _loadQuestions() async {
     List<Question> questions = await _questionService.getCustomQuestions();
+    if (!mounted) return;
     setState(() {
       _customQuestions = questions;
     });
@@ -86,6 +97,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   Future<void> _deleteQuestion(Question question) async {
     await _questionService.deleteCustomQuestion(question);
     await _loadQuestions();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Question deleted successfully!')),
     );
@@ -95,7 +107,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
+        builder: (context, dialogSetState) {
           // Dialog builder (kept simple to avoid deprecated MediaQuery APIs)
           return AlertDialog(
             title: const Text('إنشاء سؤال جديد'),
@@ -120,7 +132,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       ),
                     ],
                     onChanged: (value) {
-                      setState(() {
+                      dialogSetState(() {
                         _selectedType = value!;
                       });
                     },
@@ -143,7 +155,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       border: OutlineInputBorder(),
                       hintText: 'أدخل الرقم (صحيح أو عشري أو كسر)',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -185,9 +199,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                     _selectedImage = null;
                                   });
                                 },
-                                icon: const Icon(Icons.close, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                ),
                                 style: IconButton.styleFrom(
-                                  backgroundColor: Colors.white.withAlpha(204), // ~0.8 opacity
+                                  backgroundColor: Colors.white.withAlpha(
+                                    204,
+                                  ), // ~0.8 opacity
                                 ),
                               ),
                             ),
@@ -199,10 +218,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     ElevatedButton.icon(
                       onPressed: () async {
                         await _pickImage();
-                        setState(() {}); // Refresh dialog state
+                        // Refresh dialog state if still mounted
+                        if (!mounted) return;
+                        dialogSetState(() {});
                       },
                       icon: const Icon(Icons.image),
-                      label: Text(_selectedImage != null ? 'تغيير الصورة' : 'اختر صورة'),
+                      label: Text(
+                        _selectedImage != null ? 'تغيير الصورة' : 'اختر صورة',
+                      ),
                     ),
                   ],
                 ],
@@ -215,9 +238,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (_questionController.text.isEmpty || _answerController.text.isEmpty) {
+                  if (_questionController.text.isEmpty ||
+                      _answerController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('الرجاء ملء جميع الحقول المطلوبة')),
+                      const SnackBar(
+                        content: Text('الرجاء ملء جميع الحقول المطلوبة'),
+                      ),
                     );
                     return;
                   }
@@ -229,8 +255,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                     // Check for fraction format (e.g., 1/2, 3/4)
                     if (RegExp(r'^\s*\d+\s*/\s*\d+\s*$').hasMatch(input)) {
-                      var parts = input.split('/').map((e) => int.tryParse(e.trim())).toList();
-                      return parts.length == 2 && parts[0] != null && parts[1] != null && parts[1] != 0;
+                      var parts = input
+                          .split('/')
+                          .map((e) => int.tryParse(e.trim()))
+                          .toList();
+                      return parts.length == 2 &&
+                          parts[0] != null &&
+                          parts[1] != null &&
+                          parts[1] != 0;
                     }
 
                     return false;
@@ -238,7 +270,11 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                   if (!isValidNumber(_answerController.text)) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('الرجاء إدخال رقم صحيح أو عشري أو كسر (مثل ١.٥ أو ١/٢)')),
+                      const SnackBar(
+                        content: Text(
+                          'الرجاء إدخال رقم صحيح أو عشري أو كسر (مثل ١.٥ أو ١/٢)',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -247,7 +283,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   double answer;
                   if (_answerController.text.contains('/')) {
                     // Handle fraction (e.g., 1/2)
-                    var parts = _answerController.text.split('/').map((e) => double.parse(e.trim())).toList();
+                    var parts = _answerController.text
+                        .split('/')
+                        .map((e) => double.parse(e.trim()))
+                        .toList();
                     answer = parts[0] / parts[1];
                   } else {
                     // Handle integer or decimal
@@ -259,12 +298,16 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     newQuestion = Question.customText(
                       _questionController.text,
                       answer,
-                      explanation: _explanationController.text.isEmpty ? null : _explanationController.text,
+                      explanation: _explanationController.text.isEmpty
+                          ? null
+                          : _explanationController.text,
                     );
                   } else {
                     if (_selectedImage == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('الرجاء اختيار صورة للأسئلة البصرية')),
+                        const SnackBar(
+                          content: Text('الرجاء اختيار صورة للأسئلة البصرية'),
+                        ),
                       );
                       return;
                     }
@@ -272,7 +315,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       _questionController.text,
                       answer,
                       _selectedImage!.path,
-                      explanation: _explanationController.text.isEmpty ? null : _explanationController.text,
+                      explanation: _explanationController.text.isEmpty
+                          ? null
+                          : _explanationController.text,
                     );
                   }
 
@@ -285,6 +330,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   _explanationController.clear();
                   _selectedImage = null;
 
+                  if (!mounted) return;
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تم إنشاء السؤال بنجاح!')),
@@ -309,14 +355,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
+        builder: (context, dialogSetState) {
           // Local filter state for this dialog
           int? filterGrade;
           int? filterClass;
-          // Adapt dropdown text color to current theme
-          final bool isDark = Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark;
-          final Color textColor = isDark ? Colors.white : Colors.black87;
-          final Color dropdownBg = isDark ? Colors.grey.shade900 : Colors.white;
 
           return AlertDialog(
             title: const Text('إنشاء واجب'),
@@ -344,6 +386,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   ),
 
                   const SizedBox(height: 12),
+
                   // const Align(
                   //   alignment: Alignment.centerRight,
                   //   child: Text('فلترة الطلاب (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -397,7 +440,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   //     ],
                   //   ),
                   // ),
-
                   const SizedBox(height: 12),
 
                   // Button to open student selection dialog. The dialog now contains the 'select all matching' control.
@@ -405,16 +447,35 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _isCreatingAssignment ? null : () {
-                            final userProvider = Provider.of<UserProvider>(context, listen: false);
-                            final int? g = filterGrade ?? userProvider.teacherDefaultGrade;
-                            final int? c = filterClass ?? userProvider.teacherDefaultClassNumber;
-                            _showStudentSelectionDialog(grade: g, classNumber: c);
-                          },
+                          onPressed: _isCreatingAssignment
+                              ? null
+                              : () {
+                                  final userProvider =
+                                      Provider.of<UserProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+                                  final int? g =
+                                      filterGrade ??
+                                      userProvider.teacherDefaultGrade;
+                                  final int? c =
+                                      filterClass ??
+                                      userProvider.teacherDefaultClassNumber;
+                                  _showStudentSelectionDialog(
+                                    grade: g,
+                                    classNumber: c,
+                                  );
+                                },
                           icon: const Icon(Icons.people),
-                          label: Text(_selectedStudentNames.isEmpty ? 'اختر الطلاب' : 'تم اختيار: ${_selectedStudentNames.length}'),
+                          label: Text(
+                            _selectedStudentNames.isEmpty
+                                ? 'اختر الطلاب'
+                                : 'تم اختيار: ${_selectedStudentNames.length}',
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _selectedStudentNames.isEmpty ? Colors.grey : Colors.blue,
+                            backgroundColor: _selectedStudentNames.isEmpty
+                                ? Colors.grey
+                                : Colors.blue,
                           ),
                         ),
                       ),
@@ -423,7 +484,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                   const SizedBox(height: 12),
 
-                  const Text('اختر الأسئلة:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'اختر الأسئلة:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     height: 200,
@@ -433,12 +497,19 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: _customQuestions.isEmpty
-                        ? const Center(child: Text('لا توجد أسئلة متاحة', textDirection: TextDirection.rtl))
+                        ? const Center(
+                            child: Text(
+                              'لا توجد أسئلة متاحة',
+                              textDirection: TextDirection.rtl,
+                            ),
+                          )
                         : ListView.builder(
                             itemCount: _customQuestions.length,
                             itemBuilder: (context, index) {
                               Question question = _customQuestions[index];
-                              bool isSelected = _selectedQuestionIds.contains(question.id);
+                              bool isSelected = _selectedQuestionIds.contains(
+                                question.id,
+                              );
 
                               return CheckboxListTile(
                                 title: Text(
@@ -447,12 +518,17 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   textDirection: TextDirection.rtl,
                                 ),
-                                subtitle: Text('الإجابة: ${question.correctAnswer}', textDirection: TextDirection.rtl),
+                                subtitle: Text(
+                                  'الإجابة: ${question.correctAnswer}',
+                                  textDirection: TextDirection.rtl,
+                                ),
                                 value: isSelected,
                                 onChanged: (bool? value) {
-                                  setState(() {
+                                  dialogSetState(() {
                                     if (value == true) {
-                                      if (!_selectedQuestionIds.contains(question.id)) {
+                                      if (!_selectedQuestionIds.contains(
+                                        question.id,
+                                      )) {
                                         _selectedQuestionIds.add(question.id);
                                       }
                                     } else {
@@ -474,54 +550,359 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (_assignmentTitleController.text.isEmpty || _selectedStudentIds.isEmpty || _selectedStudentNames.isEmpty || _selectedQuestionIds.isEmpty) {
+                  if (_assignmentTitleController.text.isEmpty ||
+                      _selectedStudentIds.isEmpty ||
+                      _selectedStudentNames.isEmpty ||
+                      _selectedQuestionIds.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('الرجاء إدخال العنوان واختيار الطلاب والأسئلة')),
+                      const SnackBar(
+                        content: Text(
+                          'الرجاء إدخال العنوان واختيار الطلاب والأسئلة',
+                        ),
+                      ),
                     );
                     return;
                   }
 
                   // set loading state
-                  setState(() => _isCreatingAssignment = true);
+                  dialogSetState(() => _isCreatingAssignment = true);
 
                   List<Question> selectedQuestions = _customQuestions
                       .where((q) => _selectedQuestionIds.contains(q.id))
                       .toList();
 
                   try {
-                    await Provider.of<UserProvider>(context, listen: false).createAssignment(
-                       title: _assignmentTitleController.text,
-                       questions: selectedQuestions,
-                       assignedStudentIds: _selectedStudentIds,
-                       assignedStudentNames: _selectedStudentNames,
-                       description: _assignmentDescriptionController.text.isEmpty
-                           ? null
-                           : _assignmentDescriptionController.text,
-                     );
+                    await Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).createAssignment(
+                      title: _assignmentTitleController.text,
+                      questions: selectedQuestions,
+                      assignedStudentIds: _selectedStudentIds,
+                      assignedStudentNames: _selectedStudentNames,
+                      description: _assignmentDescriptionController.text.isEmpty
+                          ? null
+                          : _assignmentDescriptionController.text,
+                      dueDate: _assignmentDueDate,
+                    );
 
-                     await _loadAssignments();
-                     Navigator.of(context).pop();
-                     ScaffoldMessenger.of(context).showSnackBar(
-                       const SnackBar(content: Text('تم إنشاء الواجب بنجاح!')),
-                     );
-                   } catch (e) {
+                    await _loadAssignments();
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم إنشاء الواجب بنجاح!')),
+                    );
+                  } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('حدث خطأ أثناء إنشاء الواجب: $e')),
                     );
-                   } finally {
-                     setState(() => _isCreatingAssignment = false);
-                   }
+                  } finally {
+                    if (mounted) dialogSetState(() => _isCreatingAssignment = false);
+                  }
                 },
                 child: _isCreatingAssignment
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        strokeWidth: 2,
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('إنشاء واجب'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // Show dialog to create a random assignment (teacher chooses operation, range, and count)
+  void _showCreateRandomAssignmentDialog() {
+    _selectedStudentIds.clear();
+    _selectedStudentNames.clear();
+    _assignmentTitleController.clear();
+    _assignmentDescriptionController.clear();
+
+    OperationType op = OperationType.multiplication;
+    final TextEditingController minController = TextEditingController(
+      text: '1',
+    );
+    final TextEditingController maxController = TextEditingController(
+      text: '10',
+    );
+    final TextEditingController countController = TextEditingController(
+      text: '5',
+    );
+    bool allowDecimalDivision = false;
+    DateTime? randomDueDate;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, dialogSetState) {
+          return AlertDialog(
+            title: const Text('إنشاء واجب عشوائي'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _assignmentTitleController,
+                    decoration: const InputDecoration(
+                      labelText: 'عنوان الواجب',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<OperationType>(
+                    initialValue: op,
+                    decoration: const InputDecoration(
+                      labelText: 'العملية',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: OperationType.addition,
+                        child: Text('+ جمع'),
                       ),
-                    )
-                  : const Text('إنشاء واجب'),
+                      DropdownMenuItem(
+                        value: OperationType.subtraction,
+                        child: Text('- طرح'),
+                      ),
+                      DropdownMenuItem(
+                        value: OperationType.multiplication,
+                        child: Text('× ضرب'),
+                      ),
+                      DropdownMenuItem(
+                        value: OperationType.division,
+                        child: Text('÷ قسمة'),
+                      ),
+                    ],
+                    onChanged: (v) =>
+                        dialogSetState(() => op = v ?? OperationType.multiplication),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: minController,
+                          decoration: const InputDecoration(
+                            labelText: 'الحد الأدنى',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: maxController,
+                          decoration: const InputDecoration(
+                            labelText: 'الحد الأقصى',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: countController,
+                    decoration: const InputDecoration(
+                      labelText: 'عدد الأسئلة',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  // Button to open student selection (same as in the normal assignment dialog)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            // Reuse the same student selection dialog
+                            _showStudentSelectionDialog(
+                              grade: null,
+                              classNumber: null,
+                            );
+                          },
+                          icon: const Icon(Icons.people),
+                          label: Text(
+                            _selectedStudentNames.isEmpty
+                                ? 'اختر الطلاب'
+                                : 'تم اختيار: ${_selectedStudentNames.length}',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: allowDecimalDivision,
+                        onChanged: (v) => dialogSetState(() => allowDecimalDivision = v ?? false),
+                      ),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text('السماح بنتائج عشرية في القسمة'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_month),
+                          label: Text(
+                            randomDueDate == null
+                                ? 'اختيار تاريخ الاستحقاق (اختياري)'
+                                : 'استحقاق: ${randomDueDate!.toLocal().toString().split(' ')[0]}',
+                          ),
+                          onPressed: () async {
+                            DateTime? picked = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now().add(
+                                const Duration(days: 7),
+                              ),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
+                            );
+                            if (picked != null)
+                              dialogSetState(() => randomDueDate = picked);
+                          },
+                        ),
+                      ),
+                      if (randomDueDate != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => dialogSetState(() => randomDueDate = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (_assignmentTitleController.text.isEmpty ||
+                      _selectedStudentIds.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('الرجاء إدخال العنوان واختيار الطلاب'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  int min = int.tryParse(minController.text) ?? 1;
+                  int max = int.tryParse(maxController.text) ?? 10;
+                  int count = int.tryParse(countController.text) ?? 5;
+                  if (min > max) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'تأكد أن الحد الأدنى أصغر من الحد الأقصى',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (count <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('عدد الأسئلة يجب أن يكون أكبر من صفر'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  dialogSetState(() => _isCreatingAssignment = true);
+                  try {
+                    final rnd = Random();
+                    List<Question> questions = [];
+                    for (int i = 0; i < count; i++) {
+                      int a, b;
+                      if (op == OperationType.division) {
+                        if (allowDecimalDivision) {
+                          // allow decimal division: pick any a and b in range (b != 0)
+                          a = min + rnd.nextInt(max - min + 1);
+                          b = min + rnd.nextInt(max - min + 1);
+                          if (b == 0) b = 1;
+                        } else {
+                          // pick divisor in range, then pick multiplier to make dividend (integer result)
+                          b = min + rnd.nextInt(max - min + 1);
+                          int multiplier = min + rnd.nextInt(max - min + 1);
+                          a = b * multiplier;
+                        }
+                      } else if (op == OperationType.subtraction) {
+                        a = min + rnd.nextInt(max - min + 1);
+                        b = min + rnd.nextInt((a - min) + 1); // ensure b <= a
+                      } else {
+                        a = min + rnd.nextInt(max - min + 1);
+                        b = min + rnd.nextInt(max - min + 1);
+                      }
+
+                      questions.add(Question.arithmetic(a, b, op));
+                    }
+
+                    await Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).createAssignment(
+                      title: _assignmentTitleController.text,
+                      questions: questions,
+                      assignedStudentIds: List.from(_selectedStudentIds),
+                      assignedStudentNames: List.from(_selectedStudentNames),
+                      description: _assignmentDescriptionController.text.isEmpty
+                          ? null
+                          : _assignmentDescriptionController.text,
+                      dueDate: randomDueDate,
+                    );
+
+                    await _loadAssignments();
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم إنشاء الواجب العشوائي بنجاح'),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('خطأ أثناء إنشاء الواجب: $e')),
+                    );
+                  } finally {
+                    if (mounted) dialogSetState(() => _isCreatingAssignment = false);
+                  }
+                },
+                child: _isCreatingAssignment
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('إنشاء'),
               ),
             ],
           );
@@ -583,12 +964,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
+        builder: (context, dialogSetState) {
           // Initialize and load students when the dialog is first built
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _filterGrade = grade;
             _filterClass = classNumber;
-            _loadAllStudents(setState);
+            _loadAllStudents(dialogSetState);
           });
 
           return AlertDialog(
@@ -609,9 +990,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                             child: Checkbox(
                               value: _allVisibleSelected(),
                               visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               onChanged: (bool? value) {
-                                setState(() {
+                                dialogSetState(() {
                                   if (value == true) {
                                     for (var s in _visibleStudents) {
                                       if (!_selectedStudentIds.contains(s.id)) {
@@ -642,36 +1024,42 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                           ? const Center(child: CircularProgressIndicator())
                           : _visibleStudents.isEmpty
                           ? const Center(
-                          child: Text('لا توجد طلاب مطابقة للفلتر المحدد'),
-                          )
+                              child: Text('لا توجد طلاب مطابقة للفلتر المحدد'),
+                            )
                           : ListView.builder(
-                        itemCount: _visibleStudents.length,
-                        itemBuilder: (context, index) {
-                          User student = _visibleStudents[index];
-                          bool isSelected =
-                          _selectedStudentIds.contains(student.id);
+                              itemCount: _visibleStudents.length,
+                              itemBuilder: (context, index) {
+                                User student = _visibleStudents[index];
+                                bool isSelected = _selectedStudentIds.contains(
+                                  student.id,
+                                );
 
-                          return CheckboxListTile(
-                            title: Text(student.name),
-                            subtitle: Text(student.email),
-                            value: isSelected,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  if (!_selectedStudentIds
-                                      .contains(student.id)) {
-                                    _selectedStudentIds.add(student.id);
-                                    _selectedStudentNames.add(student.name);
-                                  }
-                                } else {
-                                  _selectedStudentIds.remove(student.id);
-                                  _selectedStudentNames.remove(student.name);
-                                }
-                              });
-                            },
-                          );
-                        },
-                      ),
+                                return CheckboxListTile(
+                                  title: Text(student.name),
+                                  subtitle: Text(student.email),
+                                  value: isSelected,
+                                  onChanged: (bool? value) {
+                                    dialogSetState(() {
+                                      if (value == true) {
+                                        if (!_selectedStudentIds.contains(
+                                          student.id,
+                                        )) {
+                                          _selectedStudentIds.add(student.id);
+                                          _selectedStudentNames.add(
+                                            student.name,
+                                          );
+                                        }
+                                      } else {
+                                        _selectedStudentIds.remove(student.id);
+                                        _selectedStudentNames.remove(
+                                          student.name,
+                                        );
+                                      }
+                                    });
+                                  },
+                                );
+                              },
+                            ),
                     ),
                   ),
                 ],
@@ -705,29 +1093,25 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
-
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          elevation: 2,
           bottom: TabBar(
             isScrollable: true,
+            // use theme colors for labels
+            labelColor: Theme.of(context).colorScheme.onPrimary,
+            unselectedLabelColor: Theme.of(
+              context,
+            ).colorScheme.onPrimary.withOpacity(0.7),
+            indicatorColor: Theme.of(context).colorScheme.onPrimary,
             tabs: [
               Tab(text: 'الأسئلة'),
               Tab(text: 'الواجبات'),
               Tab(text: 'الطلاب'),
-              Tab(text: 'التقدم'),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () async {
-                await _loadQuestions();
-                await _loadAssignments();
-              },
-              tooltip: 'تحديث',
-            ),
-          ],
         ),
         body: TabBarView(
           children: [
@@ -738,7 +1122,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                  colors:
+                      Provider.of<ThemeProvider>(context).themeMode ==
+                          ThemeMode.dark
                       ? [Colors.grey.shade900, Colors.black]
                       : [Colors.orange.shade50, Colors.white],
                 ),
@@ -752,85 +1138,121 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       icon: const Icon(Icons.add),
                       label: const Text('إنشاء سؤال جديد'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: _customQuestions.isEmpty
                         ? const Center(
-                      child: Text(
-                        'لا توجد أسئلة متاحة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                        textDirection: TextDirection.rtl,
-                      ),
-                    )
-                        : ListView.builder(
-                      itemCount: _customQuestions.length,
-                      itemBuilder: (context, index) {
-                        Question question = _customQuestions[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: ListTile(
-                            title: Text(
-                              question.question,
+                            child: Text(
+                              'لا توجد أسئلة متاحة',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: question.type == QuestionType.customImage
-                                    ? Colors.blue
-                                    : null,
+                                fontSize: 16,
+                                color: Colors.grey,
                               ),
+                              textDirection: TextDirection.rtl,
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('الإجابة: ${question.correctAnswer}'),
-                                if (question.explanation != null)
-                                  Text(
-                                    'الشرح: ${question.explanation!}',
-                                    style: const TextStyle(fontStyle: FontStyle.italic),
-                                    textDirection: TextDirection.rtl,
-                                  ),
-                                Text(
-                                  'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  textDirection: TextDirection.rtl,
+                          )
+                        : ListView.builder(
+                            itemCount: _customQuestions.length,
+                            itemBuilder: (context, index) {
+                              Question question = _customQuestions[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('تأكيد الحذف'),
-                                    content: const Text('هل ترغب بحذف هذا السؤال؟'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('إلغاء')),
-                                      ElevatedButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('حذف')),
+                                child: ListTile(
+                                  title: Text(
+                                    question.question,
+                                    style: TextStyle(
+                                      color:
+                                          question.type ==
+                                              QuestionType.customImage
+                                          ? Colors.blue
+                                          : null,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'الإجابة: ${question.correctAnswer}',
+                                      ),
+                                      if (question.explanation != null)
+                                        Text(
+                                          'الشرح: ${question.explanation!}',
+                                          style: const TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                          textDirection: TextDirection.rtl,
+                                        ),
+                                      Text(
+                                        'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        textDirection: TextDirection.rtl,
+                                      ),
                                     ],
                                   ),
-                                );
-                                if (confirm == true) {
-                                  await _deleteQuestion(question);
-                                }
-                              },
-                            ),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Coming soon')),
+                                  trailing: IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (c) => AlertDialog(
+                                          title: const Text('تأكيد الحذف'),
+                                          content: const Text(
+                                            'هل ترغب بحذف هذا السؤال؟',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(c).pop(false),
+                                              child: const Text('إلغاء'),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.of(c).pop(true),
+                                              child: const Text('حذف'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await _deleteQuestion(question);
+                                      }
+                                    },
+                                  ),
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Coming soon'),
+                                      ),
+                                    );
+                                  },
+                                ),
                               );
                             },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -843,7 +1265,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                  colors:
+                      Provider.of<ThemeProvider>(context).themeMode ==
+                          ThemeMode.dark
                       ? [Colors.grey.shade900, Colors.black]
                       : [Colors.purple.shade50, Colors.white],
                 ),
@@ -857,68 +1281,108 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       icon: const Icon(Icons.assignment),
                       label: const Text('إنشاء الواجب'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: ElevatedButton.icon(
+                      onPressed: _showCreateRandomAssignmentDialog,
+                      icon: const Icon(Icons.shuffle),
+                      label: const Text('إنشاء واجب عشوائي'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: _assignments.isEmpty
                         ? const Center(
-                      child: Text(
-                        'لا توجد واجبات متاحة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    )
-                        : ListView.builder(
-                      itemCount: _assignments.length,
-                      itemBuilder: (context, index) {
-                        CustomAssignment assignment = _assignments[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: ListTile(
-                            title: Text(
-                              assignment.title,
+                            child: Text(
+                              'لا توجد واجبات متاحة',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: assignment.description != null ? Colors.purple : null,
+                                fontSize: 16,
+                                color: Colors.grey,
                               ),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('الاسئلة: ${assignment.questions.length}'),
-                                if (assignment.description != null)
-                                  Text(
-                                    assignment.description!,
-                                    style: const TextStyle(fontStyle: FontStyle.italic),
+                          )
+                        : ListView.builder(
+                            itemCount: _assignments.length,
+                            itemBuilder: (context, index) {
+                              CustomAssignment assignment = _assignments[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: ListTile(
+                                  title: Text(
+                                    assignment.title,
+                                    style: TextStyle(
+                                      color: assignment.description != null
+                                          ? Colors.purple
+                                          : null,
+                                    ),
                                   ),
-                              ],
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'delete') {
-                                  _deleteAssignment(assignment);
-                                } else if (value == 'edit') {
-                                  _showEditAssignmentDialog(assignment);
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Edit'),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'الاسئلة: ${assignment.questions.length}',
+                                      ),
+                                      if (assignment.description != null)
+                                        Text(
+                                          assignment.description!,
+                                          style: const TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  trailing: PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'delete') {
+                                        _deleteAssignment(assignment);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text(
+                                          'حذف',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -930,7 +1394,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                  colors:
+                      Provider.of<ThemeProvider>(context).themeMode ==
+                          ThemeMode.dark
                       ? [Colors.grey.shade900, Colors.black]
                       : [Colors.green.shade50, Colors.white],
                 ),
@@ -946,98 +1412,37 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                   return students.isEmpty
                       ? const Center(
-                    child: Text(
-                      'لا يوجد طلاب م��جلين',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                      textDirection: TextDirection.rtl,
-                    ),
-                  )
-                      : ListView.builder(
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      User student = students[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            child: Text(student.name[0].toUpperCase()),
+                          child: Text(
+                            'لا يوجد طلاب مسجلين',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            textDirection: TextDirection.rtl,
                           ),
-                          title: Text(student.name),
-                          subtitle: Text(student.email),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        ),
-                      );
-                    },
-                  );
+                        )
+                      : ListView.builder(
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            User student = students[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(student.name[0].toUpperCase()),
+                                ),
+                                title: Text(student.name),
+                                subtitle: Text(student.email),
+                                trailing: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                ),
+                              ),
+                            );
+                          },
+                        );
                 },
               ),
             ),
 
-            // Progress Tab
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? [Colors.grey.shade900, Colors.black]
-                      : [Colors.orange.shade50, Colors.white],
-                ),
-              ),
-              child: _assignments.isEmpty
-                  ? const Center(
-                child: Text(
-                  'لا توجد واجبات متاحة',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              )
-                  : ListView.builder(
-                itemCount: _assignments.length,
-                itemBuilder: (context, index) {
-                  CustomAssignment assignment = _assignments[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ExpansionTile(
-                      title: Text(assignment.title),
-                      subtitle: Text('عدد الطلاب: ${assignment.assignedStudentIds.length}'),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'الطلاب المكلفين:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange.shade700,
-                                ),
-                                textDirection: TextDirection.rtl,
-                              ),
-                              const SizedBox(height: 8),
-                              ...assignment.assignedStudentNames.map((name) =>
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                    child: Text('• $name', textDirection: TextDirection.rtl),
-                                  )
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'عدد الأسئلة: ${assignment.questions.length}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                textDirection: TextDirection.rtl,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+            // Progress tab removed per user request
           ],
         ),
       ),
@@ -1046,100 +1451,21 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
   void _deleteAssignment(CustomAssignment assignment) async {
     try {
-      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      UserProvider userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
       await userProvider.deleteAssignment(assignment.id);
 
       await _loadAssignments();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم حذف الواجب بنجاح!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تم حذف الواجب بنجاح!')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء حذف الواجب: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء حذف الواجب: $e')));
     }
-  }
-
-  void _showEditAssignmentDialog(CustomAssignment assignment) {
-    _assignmentTitleController.text = assignment.title;
-    _assignmentDescriptionController.text = assignment.description ?? '';
-
-    // تحديد الطلاب والأسئلة الحالية مسبقًا
-    _selectedStudentIds.clear();
-    _selectedStudentNames.clear();
-    _selectedQuestionIds.clear();
-
-    // ملاحظة: هذه نسخة مبسطة. في التطبيق الفعلي، ستحتاج إلى
-    // تحميل تفاصيل الواجب من الخدمة
-    _assignmentTitleController.text = assignment.title;
-    _assignmentDescriptionController.text = assignment.description ?? '';
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('تعديل الواجب'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: _assignmentTitleController,
-                  decoration: const InputDecoration(
-                    labelText: 'عنوان الواجب',
-                    border: OutlineInputBorder(),
-                    hintText: 'مثال: واجب الأسبوع الأول في الرياضيات',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _assignmentDescriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'الوصف (اختياري)',
-                    border: OutlineInputBorder(),
-                    hintText: 'وصف موجز للواجب',
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                const Text('Note: Student and question selection editing is coming soon!',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_assignmentTitleController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter assignment title')),
-                  );
-                  return;
-                }
-
-                try {
-                  // For now, just refresh assignments and close dialog
-                  await _loadAssignments();
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Assignment updated successfully!')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error updating assignment: $e')),
-                  );
-                }
-              },
-              child: const Text('Update'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override

@@ -8,16 +8,21 @@ class ExcelExportService {
   // تصدير بيانات الطلاب كملف Excel
   Future<String?> exportStudentsToExcel(List<User> students) async {
     try {
-      // طلب إذن التخزين
+      // طلب إذن التخزين (Android)
       if (Platform.isAndroid) {
         final status = await Permission.storage.request();
         if (!status.isGranted) {
-          throw Exception('يجب منح إذن الوصول إلى التخزين');
+          // Try manage external storage on newer Android if available
+          final manageStatus = await Permission.manageExternalStorage.request();
+          if (!manageStatus.isGranted) {
+            throw Exception('يجب منح إذن الوصول إلى التخزين');
+          }
         }
       }
 
       // إنشاء ملف Excel جديد
       var excel = Excel.createExcel();
+      // الحصول على ورقة (ستُنشأ إذا لم تكن موجودة)
       Sheet sheetObject = excel['بيانات الطلاب'];
 
       // إضافة الرأس (العناوين)
@@ -33,17 +38,10 @@ class ExcelExportService {
         'تاريخ الإنشاء'
       ];
 
-      // تنسيق الرأس
+      // كتابة الرأس كسلاسل نصية
       for (int i = 0; i < headers.length; i++) {
-        var cell = sheetObject.cell(
-          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
-        );
+        var cell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
         cell.value = TextCellValue(headers[i]);
-        cell.cellStyle = CellStyle(
-          bold: true,
-          backgroundColorHex: ExcelColor.blue,
-          fontColorHex: ExcelColor.white,
-        );
       }
 
       // إضافة بيانات الطلاب
@@ -51,53 +49,34 @@ class ExcelExportService {
         User student = students[i];
         int rowIndex = i + 1;
 
-        List<CellValue> rowData = [
-          IntCellValue(i + 1),
-          TextCellValue(student.name),
-          TextCellValue(student.email),
-          TextCellValue(student.school),
-          IntCellValue(student.grade),
-          IntCellValue(student.classNumber),
-          IntCellValue(student.totalScore),
-          IntCellValue(student.totalQuizzesCompleted),
-          TextCellValue(_formatDate(student.createdAt)),
+        List<dynamic> rowData = [
+          i + 1,
+          student.name,
+          student.email,
+          student.school,
+          student.grade,
+          student.classNumber,
+          student.totalScore,
+          student.totalQuizzesCompleted,
+          _formatDate(student.createdAt),
         ];
 
         for (int j = 0; j < rowData.length; j++) {
-          var cell = sheetObject.cell(
-            CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex),
-          );
-          cell.value = rowData[j];
+          var cell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
+          cell.value = _toCellValue(rowData[j]);
         }
       }
 
       // إضافة ورقة ملخص
       Sheet summarySheet = excel['الملخص'];
-      summarySheet.cell(CellIndex.indexByString('A1')).value =
-          TextCellValue('إجمالي عدد الطلاب');
-      summarySheet.cell(CellIndex.indexByString('B1')).value =
-          IntCellValue(students.length);
+      summarySheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('إجمالي عدد الطلاب');
+      summarySheet.cell(CellIndex.indexByString('B1')).value = IntCellValue(students.length);
 
-      summarySheet.cell(CellIndex.indexByString('A2')).value =
-          TextCellValue('متوسط النقاط');
+      summarySheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('متوسط النقاط');
       double avgScore = students.isEmpty
           ? 0
-          : students.map((s) => s.totalScore).reduce((a, b) => a + b) /
-              students.length;
-      summarySheet.cell(CellIndex.indexByString('B2')).value =
-          DoubleCellValue(avgScore);
-
-      // تنسيق ورقة الملخص
-      summarySheet.cell(CellIndex.indexByString('A1')).cellStyle = CellStyle(
-        bold: true,
-        backgroundColorHex: ExcelColor.green,
-        fontColorHex: ExcelColor.white,
-      );
-      summarySheet.cell(CellIndex.indexByString('A2')).cellStyle = CellStyle(
-        bold: true,
-        backgroundColorHex: ExcelColor.green,
-        fontColorHex: ExcelColor.white,
-      );
+          : students.map((s) => s.totalScore).reduce((a, b) => a + b) / students.length;
+      summarySheet.cell(CellIndex.indexByString('B2')).value = DoubleCellValue(avgScore);
 
       // حذف الورقة الافتراضية إذا كانت موجودة
       if (excel.sheets.containsKey('Sheet1')) {
@@ -110,21 +89,28 @@ class ExcelExportService {
 
       Directory? directory;
       if (Platform.isAndroid) {
+        // Prefer public Download folder on Android
         directory = Directory('/storage/emulated/0/Download');
         if (!await directory.exists()) {
+          // fallback to external storage directory provided by path_provider
           directory = await getExternalStorageDirectory();
         }
       } else if (Platform.isIOS) {
         directory = await getApplicationDocumentsDirectory();
       } else {
-        directory = await getDownloadsDirectory();
+        // desktop or other platforms
+        try {
+          directory = await getDownloadsDirectory();
+        } catch (e) {
+          directory = await getApplicationDocumentsDirectory();
+        }
       }
 
       if (directory == null) {
-        throw Exception('لا يمكن الوصول إلى مجلد التنزيلات');
+        throw Exception('لا يمكن الوصول إلى مجلد التنزي��ات');
       }
 
-      String filePath = '${directory.path}/$fileName';
+      String filePath = '${directory.path}${Platform.pathSeparator}$fileName';
       File file = File(filePath);
 
       // حفظ البيانات
@@ -139,6 +125,13 @@ class ExcelExportService {
       print('خطأ في تصدير البيانات: $e');
       rethrow;
     }
+  }
+
+  CellValue _toCellValue(dynamic v) {
+    if (v == null) return TextCellValue('');
+    if (v is int) return IntCellValue(v);
+    if (v is double) return DoubleCellValue(v);
+    return TextCellValue(v.toString());
   }
 
   String _formatDate(DateTime date) {

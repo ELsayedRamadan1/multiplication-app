@@ -46,10 +46,19 @@ service cloud.firestore {
 
     // ---------------- quiz_results ----------------
     match /quiz_results/{resultId} {
-      // Create: only the student can create their own result doc
-      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid
+      // Create: allow a student to create either a started-only placeholder
+      // (contains startedAt as string) or a completed result (contains score).
+      // The caller must be the student identified by studentId and the
+      // assignmentId must be present.
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
         && request.resource.data.assignmentId is string
-        && request.resource.data.score is number;
+        && (
+          // Completed result created in one step
+          request.resource.data.score is number
+          // OR started-only placeholder (startedAt saved as ISO string)
+          || request.resource.data.startedAt is string
+        );
 
       // Read: student can read their own results; teacher of the assignment can read results for their assignments
       allow get: if isSignedIn() && (
@@ -59,8 +68,20 @@ service cloud.firestore {
 
       allow list: if isSignedIn();
 
-      // Prevent edits/deletes by clients (results should be append-only from clients)
-      allow update, delete: if false;
+      // Allow the owning student to finalize their started placeholder by
+      // adding the `score` and `completedAt` fields. We only allow this when
+      // the existing resource has no score (to avoid overwriting a completed result).
+      // Note: don't require the client to resend `studentId`/`assignmentId` in
+      // merge updates because some SDKs perform partial merges that omit them.
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.studentId
+        && resource.data.score == null
+        && request.resource.data.score is number
+        // completedAt is serialized as ISO string by the client (or may be omitted)
+        && (request.resource.data.completedAt is string || request.resource.data.completedAt == null);
+
+      // Disallow client deletes
+      allow delete: if false;
     }
 
     // ---------------- notifications ----------------

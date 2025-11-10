@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/student_data_model.dart' show StudentData;
 import '../models/user_model.dart';
 import '../services/student_service.dart';
 import '../services/user_provider.dart';
-import '../theme_provider.dart';
 import '../models/assignment_model.dart' show CustomAssignment, CustomQuizResult;
 import '../widgets/custom_app_bar.dart';
 
@@ -21,13 +21,13 @@ class TeacherDashboard extends StatefulWidget {
 class _TeacherDashboardState extends State<TeacherDashboard> {
   List<StudentData> _studentsData = [];
   List<User> _studentsUsers = [];
+  List<CustomAssignment> _teacherAssignments = [];
   bool _isLoading = true;
-  // Map of studentId -> whether they completed any of the teacher's assignments
   Map<String, bool> _studentCompleted = {};
 
-  // Cache latest results per assignment and active subscriptions
   final Map<String, List<CustomQuizResult>> _latestResultsByAssignment = {};
   final List<StreamSubscription<List<CustomQuizResult>>> _resultsSubs = [];
+  StreamSubscription<List<StudentData>>? _studentsSub;
 
   @override
   void initState() {
@@ -36,13 +36,17 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   }
 
   Future<void> _loadStudents() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
-    // load stored performance data
-    StudentService service = StudentService();
-    List<StudentData> studentsData = await service.getStudents();
+    final service = StudentService();
+    final studentsData = await service.getStudents();
 
-    // load users from UserProvider (which in turn uses AuthService)
+    _studentsSub ??= service.streamStudents().listen((updatedList) {
+      if (!mounted) return;
+      setState(() => _studentsData = updatedList);
+    }, onError: (_) {});
+
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     List<User> users = [];
     try {
@@ -51,7 +55,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       users = [];
     }
 
-    // Load this teacher's assignments and subscribe to their result streams so UI updates in real-time
     List<CustomAssignment> teacherAssignments = [];
     try {
       teacherAssignments = await userProvider.getTeacherAssignments();
@@ -59,7 +62,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       teacherAssignments = [];
     }
 
-    // Cancel previous subscriptions
     for (final s in _resultsSubs) {
       try {
         s.cancel();
@@ -69,100 +71,341 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     _latestResultsByAssignment.clear();
     _studentCompleted.clear();
 
-    // Subscribe to result streams for each assignment
     for (final assignment in teacherAssignments) {
       try {
-        final sub = userProvider.streamAssignmentResults(assignment.id).listen((results) {
-          _latestResultsByAssignment[assignment.id] = results;
-
-          // recompute which students have completed any assignment
-          final Map<String, bool> completed = {};
-          for (final lst in _latestResultsByAssignment.values) {
-            for (final r in lst) {
-              completed[r.studentId] = true;
+        final sub = userProvider.streamAssignmentResults(assignment.id).listen(
+          (results) {
+            _latestResultsByAssignment[assignment.id] = results;
+            final Map<String, bool> completed = {};
+            for (final lst in _latestResultsByAssignment.values) {
+              for (final r in lst) {
+                completed[r.studentId] = true;
+              }
             }
-          }
-
-          if (mounted) {
-            setState(() {
-              _studentCompleted = completed;
-            });
-          }
-        }, onError: (_) {
-          // ignore stream errors
-        });
-
+            if (!mounted) return;
+            setState(() => _studentCompleted = completed);
+          },
+          onError: (_) {},
+        );
         _resultsSubs.add(sub);
-      } catch (_) {
-        // ignore subscription errors
-      }
+      } catch (_) {}
     }
 
+    if (!mounted) return;
     setState(() {
       _studentsData = studentsData;
       _studentsUsers = users;
+      _teacherAssignments = teacherAssignments;
       _isLoading = false;
     });
-  }
-
-  @override
-  void dispose() {
-    for (final s in _resultsSubs) {
-      try { s.cancel(); } catch (_) {}
-    }
-    _resultsSubs.clear();
-    super.dispose();
   }
 
   Widget _buildAvatar(User user, double radius) {
     if (user.avatarPath != null && user.avatarPath!.isNotEmpty) {
       if (user.avatarPath!.startsWith('http')) {
-        return CircleAvatar(
-          radius: radius,
-          backgroundImage: NetworkImage(user.avatarPath!),
-        );
+        return CircleAvatar(radius: radius, backgroundImage: NetworkImage(user.avatarPath!));
       } else {
         try {
-          return CircleAvatar(
-            radius: radius,
-            backgroundImage: FileImage(File(user.avatarPath!)),
-          );
-        } catch (_) {
-          // fallthrough to initials
-        }
+          return CircleAvatar(radius: radius, backgroundImage: FileImage(File(user.avatarPath!)));
+        } catch (_) {}
       }
     }
 
-    // initials
     String initials = 'طالب';
     if (user.name.isNotEmpty) {
       final parts = user.name.split(' ');
-      if (parts.length >= 2) {
-        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-      } else {
-        initials = user.name.substring(0, math.min(2, user.name.length)).toUpperCase();
-      }
+      if (parts.length >= 2) initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      else initials = user.name.substring(0, math.min(2, user.name.length)).toUpperCase();
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     return CircleAvatar(
       radius: radius,
-      backgroundColor: Colors.blue.shade700,
-      child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      backgroundColor: colorScheme.primary,
+      child: Text(initials, style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold)),
     );
+  }
+
+  // Arabic-digit and formatting helpers
+  String _toArabicDigits(String input) {
+    const western = '0123456789';
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    final buf = StringBuffer();
+    for (final ch in input.split('')) {
+      final i = western.indexOf(ch);
+      buf.write(i >= 0 ? arabic[i] : ch);
+    }
+    return buf.toString();
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final y = local.year;
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final mm = local.minute.toString().padLeft(2, '0');
+    final ss = local.second.toString().padLeft(2, '0');
+    final off = local.timeZoneOffset;
+    final sign = off.isNegative ? '-' : '+';
+    final offH = off.inHours.abs().toString().padLeft(2, '0');
+    final offM = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    final tz = local.timeZoneName;
+    final formatted = '$y-$m-$d $hh:$mm:$ss (UTC$sign$offH:$offM $tz)';
+    return _toArabicDigits(formatted);
+  }
+
+  String _formatDurationHuman(Duration dur) {
+    if (dur.inSeconds <= 0) return _toArabicDigits('0 ثانية');
+    final parts = <String>[];
+    final h = dur.inHours;
+    final min = dur.inMinutes % 60;
+    final s = dur.inSeconds % 60;
+    if (h > 0) parts.add('${_toArabicDigits(h.toString())} ساعة');
+    if (min > 0) parts.add('${_toArabicDigits(min.toString())} دقيقة');
+    if (s > 0) parts.add('${_toArabicDigits(s.toString())} ثانية');
+    return parts.join(' ');
+  }
+
+  String _formatNumber(dynamic v) {
+    if (v == null) return '';
+    if (v is num) {
+      if (v % 1 == 0) return _toArabicDigits(v.toInt().toString());
+      return _toArabicDigits(v.toStringAsFixed(2));
+    }
+    return _toArabicDigits(v.toString());
+  }
+
+  void _showResultLogDialog(CustomQuizResult r) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('سجل الطالب'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (r.startedAt != null) ...[
+                Text('Started (ISO): ${r.startedAt!.toUtc().toIso8601String()}'),
+                const SizedBox(height: 6),
+                Text('Started (local): ${_formatDateTime(r.startedAt!)}'),
+                const SizedBox(height: 8),
+              ],
+              if (r.completedAt != null) ...[
+                Text('Completed (ISO): ${r.completedAt!.toUtc().toIso8601String()}'),
+                const SizedBox(height: 6),
+                Text('Completed (local): ${_formatDateTime(r.completedAt!)}'),
+                const SizedBox(height: 8),
+              ],
+              Text('Score: ${_toArabicDigits(r.score.toString())}/${_toArabicDigits(r.totalQuestions.toString())} (${_toArabicDigits(r.percentage.toStringAsFixed(0))}%)'),
+              const SizedBox(height: 8),
+              const Text('Raw JSON:'),
+              const SizedBox(height: 6),
+              Text(jsonEncode(r.toJson())),
+            ],
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إغلاق'))],
+      ),
+    );
+  }
+
+  void _showAssignmentResultsDialog(CustomAssignment assignment) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final results = await userProvider.getAssignmentResults(assignment.id);
+      final Map<String, CustomQuizResult> resMap = {for (var r in results) r.studentId: r};
+
+      showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> _exportCsv() async {
+              try {
+                final questions = assignment.questions;
+                final sb = StringBuffer();
+                // header
+                sb.write(
+                  'StudentId,StudentName,Score,Total,Percentage,StartedAt,CompletedAt,DurationSeconds',
+                );
+                for (int i = 0; i < questions.length; i++)
+                  sb.write(
+                    ',Q${i + 1}Text,Q${i + 1}Correct,Q${i + 1}Answer,Q${i + 1}IsCorrect',
+                  );
+                sb.writeln();
+
+                for (var sid in assignment.assignedStudentIds) {
+                  final sidx = assignment.assignedStudentIds.indexOf(sid);
+                  final sname = assignment.assignedStudentNames.length > sidx
+                      ? assignment.assignedStudentNames[sidx]
+                      : sid;
+                  final r = resMap[sid];
+                  final score = r?.score ?? 0;
+                  final total = r?.totalQuestions ?? questions.length;
+                  final pct = r?.percentage ?? 0.0;
+                  final startedAtStr = (r != null && r.startedAt != null)
+                      ? r.startedAt!.toLocal().toIso8601String()
+                      : '';
+                  final completedAtStr = (r != null && r.completedAt != null)
+                      ? r.completedAt!.toLocal().toIso8601String()
+                      : '';
+                  final durationSeconds =
+                      (r != null &&
+                          r.startedAt != null &&
+                          r.completedAt != null)
+                      ? r.completedAt!.difference(r.startedAt!).inSeconds
+                      : null;
+                  sb.write(
+                    '"$sid","$sname",$score,$total,${pct.toStringAsFixed(1)},"$startedAtStr","$completedAtStr",${durationSeconds ?? ''}',
+                  );
+
+                  if (r != null && r.questionResults.isNotEmpty) {
+                    for (var qr in r.questionResults) {
+                      final textEsc = qr.questionText.replaceAll('"', '""');
+                      sb.write(
+                        ',"$textEsc",${qr.correctAnswer},${qr.userAnswer},${qr.isCorrect}',
+                      );
+                    }
+                  } else {
+                    for (int i = 0; i < questions.length; i++)
+                      sb.write(',"",,,');
+                  }
+
+                  sb.writeln();
+                }
+
+                String fileName =
+                    'assignment_${assignment.id}_${DateTime.now().toIso8601String().replaceAll(':', '-')}.csv';
+                String? downloads;
+                try {
+                  if (Platform.isWindows) {
+                    final up = Platform.environment['USERPROFILE'];
+                    if (up != null) downloads = '$up\\Downloads';
+                  } else {
+                    final home = Platform.environment['HOME'];
+                    if (home != null) downloads = '$home/Downloads';
+                  }
+                } catch (_) {}
+
+                String path = (downloads != null)
+                    ? '$downloads\\$fileName'
+                    : fileName;
+                final file = File(path);
+                await file.writeAsString(sb.toString());
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('CSV exported to $path')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+              }
+            }
+
+            return AlertDialog(
+              title: Text('نتائج: ${assignment.title}'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: assignment.assignedStudentIds.isEmpty
+                    ? const Text('لا طلاب محددين لهذا الواجب')
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // CSV export removed as requested
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: assignment.assignedStudentIds.length,
+                              itemBuilder: (context, index) {
+                                final sid =
+                                    assignment.assignedStudentIds[index];
+                                final sname =
+                                    assignment.assignedStudentNames.length >
+                                        index
+                                    ? assignment.assignedStudentNames[index]
+                                    : sid;
+                                final r = resMap[sid];
+                                return Card(
+                                  child: ExpansionTile(
+                                    title: Text(sname),
+                                    subtitle: r == null
+                                        ? const Text('لم يُنهي بعد')
+                                        : Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${r.score}/${r.totalQuestions}  (${r.percentage.toStringAsFixed(0)}%)',
+                                              ),
+                                              if (r.completedAt != null)
+                                                Text(
+                                                  'أنهى: ${r.completedAt!.toLocal().toString().split('.')[0]}',
+                                                ),
+                                              if (r.startedAt != null &&
+                                                  r.completedAt != null)
+                                                Text(
+                                                  'المدة: ${r.completedAt!.difference(r.startedAt!).inSeconds} ثانية',
+                                                ),
+                                            ],
+                                          ),
+                                    children: r == null
+                                        ? []
+                                        : r.questionResults
+                                              .map(
+                                                (qr) => ListTile(
+                                                  title: Text(qr.questionText),
+                                                  subtitle: Text(
+                                                    'الإجابة: ${qr.userAnswer} — صحيح: ${qr.isCorrect}',
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('إغلاق'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطأ عند جلب النتائج: $e')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'لوحة تحكم المعلم',
-        color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark ? Colors.black : Colors.blue.shade800,
+        title: 'نتائج الطلاب',
+        color: Theme.of(context).colorScheme.primary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadStudents,
-            tooltip: 'تحديث',
-          ),
+          // Show a small loading indicator while loading, otherwise a refresh button
+          _isLoading
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _loadStudents,
+                  tooltip: 'تحديث',
+                ),
         ],
       ),
       body: Container(
@@ -170,141 +413,64 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                ? [Colors.grey.shade900, Colors.black]
-                : [Colors.blue.shade50, Colors.white],
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).colorScheme.surface,
+            ],
           ),
         ),
         child: Column(
           children: [
-
-            // Students List
+            // Results view (replaces the old Students list) — professional assignment-results launcher
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _studentsUsers.isEmpty
-                      ? const Center(child: Text('لا توجد بيانات طلاب بعد'))
-                      : ListView.builder(
-                          itemCount: _studentsUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = _studentsUsers[index];
-                            // try to find performance data by matching name or email
-                            final perf = _studentsData.firstWhere(
-                                (s) => s.name == user.name,
-                                orElse: () => StudentData(name: user.name));
-
-                            return Card(
-                              margin: const EdgeInsets.all(10),
-                              child: ListTile(
-                                leading: _buildAvatar(user, 28),
-                                title: Text(user.name),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (user.school.isNotEmpty) Text('المدرسة: ${user.school}'),
-                                    Text('الصف: ${user.grade}  •  الفصل: ${user.classNumber}'),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'النتيجة: ${perf.score}/${perf.totalQuestions}', 
-                                      style: TextStyle(
-                                        color: perf.totalQuestions > 0 
-                                          ? (perf.score / perf.totalQuestions >= 0.7 
-                                              ? Colors.green 
-                                              : Colors.orange
-                                            ) 
-                                          : Colors.grey
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (_studentCompleted[user.id] == true) ...[
-                                      const Icon(Icons.check_circle, color: Colors.green),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    IconButton(
-                                      icon: const Icon(Icons.more_horiz),
-                                      onPressed: () {
-                                        _showStudentDetails(user, perf);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => _showStudentDetails(user, perf),
-                              ),
-                            );
-                          },
+                  : _teacherAssignments.isEmpty
+                  ? Center(
+                      child: Text(
+                        'لا توجد واجبات لعرض النتائج لها',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
-                    ]),
-                  ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _loadStudents,
-        tooltip: 'تحديث',
-        child: const Icon(Icons.refresh),
-      ),
-    );
-  }
-
-  void _showStudentDetails(User user, StudentData perf) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(user.name),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _buildAvatar(user, 30),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (user.school.isNotEmpty) Text('المدرسة: ${user.school}'),
-                        Text('الصف: ${user.grade}'),
-                        Text('الفصل: ${user.classNumber}'),
-                        const SizedBox(height: 6),
-                        Text('البريد: ${user.email}'),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: _teacherAssignments.length,
+                            itemBuilder: (context, index) {
+                              final asg = _teacherAssignments[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                child: ListTile(
+                                  title: Text(asg.title),
+                                  subtitle: Text(
+                                    'الطلاب: ${asg.assignedStudentNames.length} • الأسئلة: ${asg.questions.length}',
+                                  ),
+                                  trailing: ElevatedButton(
+                                    child: const Text('عرض النتائج'),
+                                    onPressed: () =>
+                                        _showAssignmentResultsDialog(asg),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('أداء الطالب:'),
-              const SizedBox(height: 8),
-              Text('النتيجة: ${perf.score}/${perf.totalQuestions}'),
-              const SizedBox(height: 8),
-              if (perf.answers.isNotEmpty)
-                Expanded(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: perf.answers.length,
-                    itemBuilder: (context, index) {
-                      final ans = perf.answers[index];
-                      return ListTile(
-                        title: Text(ans.question),
-                        subtitle: Text('إجابتك: ${ans.answer}'),
-                        trailing: Icon(ans.isCorrect ? Icons.check : Icons.close, color: ans.isCorrect?Colors.green:Colors.red),
-                      );
-                    },
-                  ),
-                )
-              else
-                const Text('لا توجد إجابات ��حفوظة لهذا الطالب'),
-            ],
-          ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إغلاق')),
-        ],
       ),
     );
   }

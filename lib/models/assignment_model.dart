@@ -48,17 +48,20 @@ class CustomAssignment {
       id: json['id'] ?? '',
       teacherId: json['teacherId'] ?? '',
       teacherName: json['teacherName'] ?? '',
-      assignedStudentIds: (json['assignedStudentIds'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ??
+      assignedStudentIds:
+          (json['assignedStudentIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
           [],
-      assignedStudentNames: (json['assignedStudentNames'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ??
+      assignedStudentNames:
+          (json['assignedStudentNames'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
           [],
-      questions: (json['questions'] as List?)
-          ?.map((q) => Question.fromJson(Map<String, dynamic>.from(q)))
-          .toList() ??
+      questions:
+          (json['questions'] as List?)
+              ?.map((q) => Question.fromJson(Map<String, dynamic>.from(q)))
+              .toList() ??
           [],
       title: json['title'] ?? '',
       description: json['description'],
@@ -91,8 +94,10 @@ class CustomAssignment {
       id: id ?? this.id,
       teacherId: teacherId ?? this.teacherId,
       teacherName: teacherName ?? this.teacherName,
-      assignedStudentIds: assignedStudentIds ?? List.from(this.assignedStudentIds),
-      assignedStudentNames: assignedStudentNames ?? List.from(this.assignedStudentNames),
+      assignedStudentIds:
+          assignedStudentIds ?? List.from(this.assignedStudentIds),
+      assignedStudentNames:
+          assignedStudentNames ?? List.from(this.assignedStudentNames),
       questions: questions ?? List.from(this.questions),
       title: title ?? this.title,
       description: description ?? this.description,
@@ -115,7 +120,8 @@ class CustomQuizResult {
   final String studentId;
   final String studentName;
   final List<QuestionResult> questionResults;
-  final DateTime completedAt;
+  final DateTime? completedAt;
+  final DateTime? startedAt; // when the student opened/started the quiz
   final int score;
   final int totalQuestions;
 
@@ -125,9 +131,10 @@ class CustomQuizResult {
     required this.studentName,
     required this.questionResults,
     DateTime? completedAt,
+    this.startedAt,
     required this.score,
     required this.totalQuestions,
-  }) : completedAt = completedAt ?? DateTime.now();
+  }) : completedAt = completedAt;
 
   Map<String, dynamic> toJson() {
     return {
@@ -135,7 +142,8 @@ class CustomQuizResult {
       'studentId': studentId,
       'studentName': studentName,
       'questionResults': questionResults.map((q) => q.toJson()).toList(),
-      'completedAt': completedAt.toIso8601String(),
+      'completedAt': completedAt?.toIso8601String(),
+      'startedAt': startedAt?.toIso8601String(),
       'score': score,
       'totalQuestions': totalQuestions,
     };
@@ -146,13 +154,19 @@ class CustomQuizResult {
       assignmentId: json['assignmentId'] ?? '',
       studentId: json['studentId'] ?? '',
       studentName: json['studentName'] ?? '',
-      questionResults: (json['questionResults'] as List?)
-          ?.map((q) =>
-          QuestionResult.fromJson(Map<String, dynamic>.from(q)))
-          .toList() ??
+      questionResults:
+          (json['questionResults'] as List?)
+              ?.map(
+                (q) => QuestionResult.fromJson(Map<String, dynamic>.from(q)),
+              )
+              .toList() ??
           [],
-      completedAt: DateTime.tryParse(json['completedAt'] ?? '') ??
-          DateTime.now(),
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'])
+          : null,
+      startedAt: json['startedAt'] != null
+          ? DateTime.tryParse(json['startedAt'])
+          : null,
       score: (json['score'] is int)
           ? json['score']
           : int.tryParse(json['score'].toString()) ?? 0,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/assignment_model.dart';
 import '../services/user_provider.dart';
@@ -8,10 +9,12 @@ class TeacherAssignmentDashboard extends StatefulWidget {
   const TeacherAssignmentDashboard({super.key});
 
   @override
-  _TeacherAssignmentDashboardState createState() => _TeacherAssignmentDashboardState();
+  _TeacherAssignmentDashboardState createState() =>
+      _TeacherAssignmentDashboardState();
 }
 
-class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard> {
+class _TeacherAssignmentDashboardState
+    extends State<TeacherAssignmentDashboard> {
   @override
   void initState() {
     super.initState();
@@ -25,9 +28,7 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
     return Scaffold(
       appBar: AppBar(
         title: const Text('تقدّم الطلاب'),
-        backgroundColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-            ? Colors.black
-            : Colors.orange.shade800,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
         actions: [
           IconButton(
@@ -45,9 +46,10 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                ? [Colors.grey.shade900, Colors.black]
-                : [Colors.orange.shade50, Colors.white],
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).colorScheme.surface,
+            ],
           ),
         ),
         child: StreamBuilder<List<CustomAssignment>>(
@@ -60,11 +62,16 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
             final assignments = snapshot.data ?? [];
 
             if (assignments.isEmpty) {
-              return const Center(
+              return Center(
                 child: Text(
                   'لم يتم إنشاء أي واجبات بعد.\nأنشئ واجبًا لترى تقدّم الطلاب!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.7),
+                  ),
                 ),
               );
             }
@@ -75,22 +82,24 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
                 final assignment = assignments[index];
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: ExpansionTile(
                     title: Text(
                       assignment.title,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      '${assignment.questions.length} سؤال',
-                    ),
+                    subtitle: Text('${assignment.questions.length} سؤال'),
                     children: [
                       Container(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (assignment.description != null && assignment.description!.isNotEmpty)
+                            if (assignment.description != null &&
+                                assignment.description!.isNotEmpty)
                               Text(
                                 'الوصف: ${assignment.description!}',
                                 style: TextStyle(
@@ -103,7 +112,9 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
                               'الحالة: ${assignment.isActive ? 'نشط' : 'غير نشط'}',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: assignment.isActive ? Colors.green : Colors.red,
+                                color: assignment.isActive
+                                    ? Colors.green
+                                    : Colors.red,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -116,16 +127,23 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
 
                             // Show assigned students with a real-time check for completion, plus detailed results below
                             StreamBuilder<List<CustomQuizResult>>(
-                              stream: userProvider.streamAssignmentResults(assignment.id),
+                              stream: userProvider.streamAssignmentResults(
+                                assignment.id,
+                              ),
                               builder: (context, resSnapshot) {
-                                final assignmentResults = resSnapshot.data ?? [];
+                                final assignmentResults =
+                                    resSnapshot.data ?? [];
 
                                 // create a set of studentIds who completed this assignment
-                                final completedIds = assignmentResults.map((r) => r.studentId).toSet();
+                                final completedIds = assignmentResults
+                                    .map((r) => r.studentId)
+                                    .toSet();
 
                                 // Assigned students list (ids + names if available in assignment)
-                                final assignedIds = assignment.assignedStudentIds;
-                                final assignedNames = assignment.assignedStudentNames;
+                                final assignedIds =
+                                    assignment.assignedStudentIds;
+                                final assignedNames =
+                                    assignment.assignedStudentNames;
 
                                 Widget assignedList;
                                 if (assignedIds.isEmpty) {
@@ -135,23 +153,39 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
                                       color: Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Text('لم يتم تعيين طلاب لهذا الواجب بعد.', style: TextStyle(color: Colors.grey)),
+                                    child: const Text(
+                                      'لم يتم تعيين طلاب لهذا الواجب بعد.',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
                                   );
                                 } else {
                                   assignedList = Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: assignedIds.asMap().entries.map((entry) {
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: assignedIds.asMap().entries.map((
+                                      entry,
+                                    ) {
                                       final i = entry.key;
                                       final id = entry.value;
-                                      final name = i < assignedNames.length ? assignedNames[i] : 'طالب';
-                                      final completed = completedIds.contains(id);
+                                      final name = i < assignedNames.length
+                                          ? assignedNames[i]
+                                          : 'طالب';
+                                      final completed = completedIds.contains(
+                                        id,
+                                      );
                                       return ListTile(
                                         dense: true,
                                         contentPadding: EdgeInsets.zero,
                                         title: Text(name),
                                         trailing: completed
-                                            ? const Icon(Icons.check_circle, color: Colors.green)
-                                            : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                                            ? const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.green,
+                                              )
+                                            : const Icon(
+                                                Icons.radio_button_unchecked,
+                                                color: Colors.grey,
+                                              ),
                                       );
                                     }).toList(),
                                   );
@@ -173,66 +207,102 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
                                   );
                                 } else {
                                   resultsWidget = Column(
-                                    children: assignmentResults.map((result) => Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: result.percentage >= 70
-                                            ? Colors.green.shade50
-                                            : result.percentage >= 50
-                                                ? Colors.yellow.shade50
-                                                : Colors.red.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: result.percentage >= 70
-                                              ? Colors.green.shade200
-                                              : result.percentage >= 50
-                                                  ? Colors.yellow.shade200
-                                                  : Colors.red.shade200,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                result.studentName,
-                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                    children: assignmentResults
+                                        .map(
+                                          (result) => Container(
+                                            margin: const EdgeInsets.only(
+                                              bottom: 8,
+                                            ),
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: result.percentage >= 70
+                                                  ? Colors.green.shade50
+                                                  : result.percentage >= 50
+                                                  ? Colors.yellow.shade50
+                                                  : Colors.red.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: result.percentage >= 70
+                                                    ? Colors.green.shade200
+                                                    : result.percentage >= 50
+                                                    ? Colors.yellow.shade200
+                                                    : Colors.red.shade200,
                                               ),
-                                              Text(
-                                                '${result.score}/${result.totalQuestions} (${result.percentage.toStringAsFixed(1)}%)',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: result.percentage >= 70
-                                                      ? Colors.green.shade700
-                                                      : result.percentage >= 50
-                                                          ? Colors.orange.shade700
-                                                          : Colors.red.shade700,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      result.studentName,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '${result.score}/${result.totalQuestions} (${result.percentage.toStringAsFixed(1)}%)',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            result.percentage >=
+                                                                70
+                                                            ? Colors
+                                                                  .green
+                                                                  .shade700
+                                                            : result.percentage >=
+                                                                  50
+                                                            ? Colors
+                                                                  .orange
+                                                                  .shade700
+                                                            : Colors
+                                                                  .red
+                                                                  .shade700,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                            ],
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'أُكمل في: ${result.completedAt.toString().substring(0, 16)}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'أُكمل في: ${result.completedAt.toString().substring(0, 16)}',
-                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                          ),
-                                        ],
-                                      ),
-                                    )).toList(),
+                                        )
+                                        .toList(),
                                   );
                                 }
 
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('الطلاب المعينون:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const Text(
+                                      'الطلاب المعينون:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                     const SizedBox(height: 8),
                                     assignedList,
                                     const SizedBox(height: 12),
-                                    const Text('تفاصيل النتائج:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const Text(
+                                      'تفاصيل النتائج:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                     const SizedBox(height: 8),
                                     resultsWidget,
                                   ],
@@ -245,10 +315,13 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
                               children: [
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () => _showDetailedResults(assignment, []),
+                                    onPressed: () =>
+                                        _showDetailedResults(assignment, []),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blue,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                     ),
                                     child: const Text('عرض التفاصيل'),
                                   ),
@@ -256,17 +329,26 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: () => _toggleAssignmentStatus(assignment),
+                                    onPressed: () =>
+                                        _toggleAssignmentStatus(assignment),
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       side: BorderSide(
-                                        color: assignment.isActive ? Colors.red : Colors.green,
+                                        color: assignment.isActive
+                                            ? Colors.red
+                                            : Colors.green,
                                       ),
                                     ),
                                     child: Text(
-                                      assignment.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                                      assignment.isActive
+                                          ? 'إلغاء التفعيل'
+                                          : 'تفعيل',
                                       style: TextStyle(
-                                        color: assignment.isActive ? Colors.red : Colors.green,
+                                        color: assignment.isActive
+                                            ? Colors.red
+                                            : Colors.green,
                                       ),
                                     ),
                                   ),
@@ -287,7 +369,10 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
     );
   }
 
-  void _showDetailedResults(CustomAssignment assignment, List<CustomQuizResult> results) {
+  void _showDetailedResults(
+    CustomAssignment assignment,
+    List<CustomQuizResult> results,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -297,47 +382,61 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('الأسئلة:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'الأسئلة:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              ...assignment.questions.map((question) => Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(4),
+              ...assignment.questions.map(
+                (question) => Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${assignment.questions.indexOf(question) + 1}. ${question.question} (الإجابة: ${question.correctAnswer})',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
-                child: Text(
-                  '${assignment.questions.indexOf(question) + 1}. ${question.question} (الإجابة: ${question.correctAnswer})',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              )),
+              ),
               const SizedBox(height: 16),
-              const Text('أداء الطلاب:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'أداء الطلاب:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              ...results.map((result) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.studentName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    ...result.questionResults.map((qResult) => Text(
-                      'س${result.questionResults.indexOf(qResult) + 1}: ${qResult.userAnswer} (${qResult.isCorrect ? '✓' : '✗'})',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: qResult.isCorrect ? Colors.green : Colors.red,
+              ...results.map(
+                (result) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.studentName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    )),
-                  ],
+                      ...result.questionResults.map(
+                        (qResult) => Text(
+                          'س${result.questionResults.indexOf(qResult) + 1}: ${qResult.userAnswer} (${qResult.isCorrect ? '✓' : '✗'})',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: qResult.isCorrect
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ],
           ),
         ),
@@ -352,8 +451,14 @@ class _TeacherAssignmentDashboardState extends State<TeacherAssignmentDashboard>
   }
 
   void _toggleAssignmentStatus(CustomAssignment assignment) async {
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
-    await userProvider.updateAssignmentStatus(assignment.id, !assignment.isActive);
+    UserProvider userProvider = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    );
+    await userProvider.updateAssignmentStatus(
+      assignment.id,
+      !assignment.isActive,
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

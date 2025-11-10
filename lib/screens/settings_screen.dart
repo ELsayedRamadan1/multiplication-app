@@ -8,6 +8,7 @@ import '../services/user_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import 'login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/excel_export_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -153,6 +154,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('حدث خطأ أثناء اختيار الصورة: $e')),
       );
+    }
+  }
+
+  Future<void> _exportStudents() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (!userProvider.isTeacher) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الميزة متاحة فقط للمعلمين')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // جلب الطلاب حسب إعدادات المعلم (افتراضيًا جميع الطلاب)
+      List<User> students = await userProvider.getAllStudents(
+        grade: userProvider.teacherDefaultGrade,
+        classNumber: userProvider.teacherDefaultClassNumber,
+      );
+
+      if (students.isEmpty) {
+        Navigator.of(context).pop();
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يوجد طلاب لتصديرهم')),
+        );
+        return;
+      }
+
+      ExcelExportService excelService = ExcelExportService();
+      String? filePath = await excelService.exportStudentsToExcel(students);
+
+      Navigator.of(context).pop();
+
+      if (filePath != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تم حفظ الملف بنجاح: $filePath')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ أثناء التصدير: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -339,7 +394,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   
                   // Logout Button
-                  const SizedBox(height: 20),
+
+                  // Export students for teachers
+                  if (currentUser.role == UserRole.teacher) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.file_upload),
+                        label: const Text('تصدير بيانات الطلاب (Excel)'),
+                        onPressed: _exportStudents,
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 137),
+
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -362,6 +436,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+
+
                 ],
               ),
             ),

@@ -22,8 +22,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _answerController = TextEditingController();
   final TextEditingController _explanationController = TextEditingController();
-  final TextEditingController _assignmentTitleController = TextEditingController();
-  final TextEditingController _assignmentDescriptionController = TextEditingController();
+  final TextEditingController _assignmentTitleController =
+      TextEditingController();
+  final TextEditingController _assignmentDescriptionController =
+      TextEditingController();
   QuestionType _selectedType = QuestionType.customText;
   XFile? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
@@ -63,15 +65,19 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error selecting image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error selecting image: $e')));
     }
   }
 
   Future<void> _loadAssignments() async {
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
-    List<CustomAssignment> assignments = await userProvider.getTeacherAssignments();
+    UserProvider userProvider = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    );
+    List<CustomAssignment> assignments = await userProvider
+        .getTeacherAssignments();
     setState(() {
       _assignments = assignments;
     });
@@ -144,7 +150,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       border: OutlineInputBorder(),
                       hintText: 'أدخل الرقم (صحيح أو عشري أو كسر)',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -186,9 +194,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                     _selectedImage = null;
                                   });
                                 },
-                                icon: const Icon(Icons.close, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                ),
                                 style: IconButton.styleFrom(
-                                  backgroundColor: Colors.white.withAlpha(204), // ~0.8 opacity
+                                  backgroundColor: Colors.white.withAlpha(
+                                    204,
+                                  ), // ~0.8 opacity
                                 ),
                               ),
                             ),
@@ -203,7 +216,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                         setState(() {}); // Refresh dialog state
                       },
                       icon: const Icon(Icons.image),
-                      label: Text(_selectedImage != null ? 'تغيير الصورة' : 'اختر صورة'),
+                      label: Text(
+                        _selectedImage != null ? 'تغيير الصورة' : 'اختر صورة',
+                      ),
                     ),
                   ],
                 ],
@@ -216,9 +231,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (_questionController.text.isEmpty || _answerController.text.isEmpty) {
+                  if (_questionController.text.isEmpty ||
+                      _answerController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('الرجاء ملء جميع الحقول المطلوبة')),
+                      const SnackBar(
+                        content: Text('الرجاء ملء جميع الحقول المطلوبة'),
+                      ),
                     );
                     return;
                   }
@@ -230,8 +248,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                     // Check for fraction format (e.g., 1/2, 3/4)
                     if (RegExp(r'^\s*\d+\s*/\s*\d+\s*$').hasMatch(input)) {
-                      var parts = input.split('/').map((e) => int.tryParse(e.trim())).toList();
-                      return parts.length == 2 && parts[0] != null && parts[1] != null && parts[1] != 0;
+                      var parts = input
+                          .split('/')
+                          .map((e) => int.tryParse(e.trim()))
+                          .toList();
+                      return parts.length == 2 &&
+                          parts[0] != null &&
+                          parts[1] != null &&
+                          parts[1] != 0;
                     }
 
                     return false;
@@ -239,7 +263,11 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                   if (!isValidNumber(_answerController.text)) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('الرجاء إدخال رقم صحيح أو عشري أو كسر (مثل ١.٥ أو ١/٢)')),
+                      const SnackBar(
+                        content: Text(
+                          'الرجاء إدخال رقم صحيح أو عشري أو كسر (مثل ١.٥ أو ١/٢)',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -248,7 +276,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   double answer;
                   if (_answerController.text.contains('/')) {
                     // Handle fraction (e.g., 1/2)
-                    var parts = _answerController.text.split('/').map((e) => double.parse(e.trim())).toList();
+                    var parts = _answerController.text
+                        .split('/')
+                        .map((e) => double.parse(e.trim()))
+                        .toList();
                     answer = parts[0] / parts[1];
                   } else {
                     // Handle integer or decimal
@@ -260,12 +291,16 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     newQuestion = Question.customText(
                       _questionController.text,
                       answer,
-                      explanation: _explanationController.text.isEmpty ? null : _explanationController.text,
+                      explanation: _explanationController.text.isEmpty
+                          ? null
+                          : _explanationController.text,
                     );
                   } else {
                     if (_selectedImage == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('الرجاء اختيار صورة للأسئلة البصرية')),
+                        const SnackBar(
+                          content: Text('الرجاء اختيار صورة للأسئلة البصرية'),
+                        ),
                       );
                       return;
                     }
@@ -273,7 +308,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       _questionController.text,
                       answer,
                       _selectedImage!.path,
-                      explanation: _explanationController.text.isEmpty ? null : _explanationController.text,
+                      explanation: _explanationController.text.isEmpty
+                          ? null
+                          : _explanationController.text,
                     );
                   }
 
@@ -315,7 +352,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
           int? filterGrade;
           int? filterClass;
           // Adapt dropdown text color to current theme
-          final bool isDark = Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark;
+          final bool isDark =
+              Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark;
           final Color textColor = isDark ? Colors.white : Colors.black87;
           final Color dropdownBg = isDark ? Colors.grey.shade900 : Colors.white;
 
@@ -347,7 +385,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   const SizedBox(height: 12),
                   const Align(
                     alignment: Alignment.centerRight,
-                    child: Text('فلترة الطلاب (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'فلترة الطلاب (اختياري)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
 
                   const SizedBox(height: 8),
@@ -369,11 +410,30 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                             labelStyle: TextStyle(color: textColor),
                             border: const OutlineInputBorder(),
                             isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
                           ),
                           items: [
-                            DropdownMenuItem<int?>(value: null, child: Text('الكل', overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor))),
-                            ...List.generate(6, (i) => i + 1).map((g) => DropdownMenuItem<int?>(value: g, child: Text('الصف $g', overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor)))),
+                            DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text(
+                                'الكل',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: textColor),
+                              ),
+                            ),
+                            ...List.generate(6, (i) => i + 1).map(
+                              (g) => DropdownMenuItem<int?>(
+                                value: g,
+                                child: Text(
+                                  'الصف $g',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                            ),
                           ],
                           dropdownColor: dropdownBg,
                           onChanged: (v) => setState(() => filterGrade = v),
@@ -389,11 +449,30 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                             labelStyle: TextStyle(color: textColor),
                             border: const OutlineInputBorder(),
                             isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
                           ),
                           items: [
-                            DropdownMenuItem<int?>(value: null, child: Text('الكل', overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor))),
-                            ...List.generate(10, (i) => i + 1).map((c) => DropdownMenuItem<int?>(value: c, child: Text('الفصل $c', overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor)))),
+                            DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text(
+                                'الكل',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: textColor),
+                              ),
+                            ),
+                            ...List.generate(10, (i) => i + 1).map(
+                              (c) => DropdownMenuItem<int?>(
+                                value: c,
+                                child: Text(
+                                  'الفصل $c',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                            ),
                           ],
                           dropdownColor: dropdownBg,
                           onChanged: (v) => setState(() => filterClass = v),
@@ -409,16 +488,35 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _isCreatingAssignment ? null : () {
-                            final userProvider = Provider.of<UserProvider>(context, listen: false);
-                            final int? g = filterGrade ?? userProvider.teacherDefaultGrade;
-                            final int? c = filterClass ?? userProvider.teacherDefaultClassNumber;
-                            _showStudentSelectionDialog(grade: g, classNumber: c);
-                          },
+                          onPressed: _isCreatingAssignment
+                              ? null
+                              : () {
+                                  final userProvider =
+                                      Provider.of<UserProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+                                  final int? g =
+                                      filterGrade ??
+                                      userProvider.teacherDefaultGrade;
+                                  final int? c =
+                                      filterClass ??
+                                      userProvider.teacherDefaultClassNumber;
+                                  _showStudentSelectionDialog(
+                                    grade: g,
+                                    classNumber: c,
+                                  );
+                                },
                           icon: const Icon(Icons.people),
-                          label: Text(_selectedStudentNames.isEmpty ? 'اختر الطلاب' : 'تم اختيار: ${_selectedStudentNames.length}'),
+                          label: Text(
+                            _selectedStudentNames.isEmpty
+                                ? 'اختر الطلاب'
+                                : 'تم اختيار: ${_selectedStudentNames.length}',
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _selectedStudentNames.isEmpty ? Colors.grey : Colors.blue,
+                            backgroundColor: _selectedStudentNames.isEmpty
+                                ? Colors.grey
+                                : Colors.blue,
                           ),
                         ),
                       ),
@@ -427,7 +525,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
                   const SizedBox(height: 12),
 
-                  const Text('اختر الأسئلة:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'اختر الأسئلة:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     height: 200,
@@ -437,36 +538,48 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: _customQuestions.isEmpty
-                        ? const Center(child: Text('لا توجد أسئلة متاحة', textDirection: TextDirection.rtl))
+                        ? const Center(
+                            child: Text(
+                              'لا توجد أسئلة متاحة',
+                              textDirection: TextDirection.rtl,
+                            ),
+                          )
                         : ListView.builder(
-                      itemCount: _customQuestions.length,
-                      itemBuilder: (context, index) {
-                        Question question = _customQuestions[index];
-                        bool isSelected = _selectedQuestionIds.contains(question.id);
+                            itemCount: _customQuestions.length,
+                            itemBuilder: (context, index) {
+                              Question question = _customQuestions[index];
+                              bool isSelected = _selectedQuestionIds.contains(
+                                question.id,
+                              );
 
-                        return CheckboxListTile(
-                          title: Text(
-                            question.question,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textDirection: TextDirection.rtl,
+                              return CheckboxListTile(
+                                title: Text(
+                                  question.question,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textDirection: TextDirection.rtl,
+                                ),
+                                subtitle: Text(
+                                  'الإجابة: ${question.correctAnswer}',
+                                  textDirection: TextDirection.rtl,
+                                ),
+                                value: isSelected,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      if (!_selectedQuestionIds.contains(
+                                        question.id,
+                                      )) {
+                                        _selectedQuestionIds.add(question.id);
+                                      }
+                                    } else {
+                                      _selectedQuestionIds.remove(question.id);
+                                    }
+                                  });
+                                },
+                              );
+                            },
                           ),
-                          subtitle: Text('الإجابة: ${question.correctAnswer}', textDirection: TextDirection.rtl),
-                          value: isSelected,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                if (!_selectedQuestionIds.contains(question.id)) {
-                                  _selectedQuestionIds.add(question.id);
-                                }
-                              } else {
-                                _selectedQuestionIds.remove(question.id);
-                              }
-                            });
-                          },
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -478,9 +591,16 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (_assignmentTitleController.text.isEmpty || _selectedStudentIds.isEmpty || _selectedStudentNames.isEmpty || _selectedQuestionIds.isEmpty) {
+                  if (_assignmentTitleController.text.isEmpty ||
+                      _selectedStudentIds.isEmpty ||
+                      _selectedStudentNames.isEmpty ||
+                      _selectedQuestionIds.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('الرجاء إدخال العنوان واختيار الطلاب والأسئلة')),
+                      const SnackBar(
+                        content: Text(
+                          'الرجاء إدخال العنوان واختيار الطلاب والأسئلة',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -493,7 +613,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       .toList();
 
                   try {
-                    await Provider.of<UserProvider>(context, listen: false).createAssignment(
+                    await Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    ).createAssignment(
                       title: _assignmentTitleController.text,
                       questions: selectedQuestions,
                       assignedStudentIds: _selectedStudentIds,
@@ -518,13 +641,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 },
                 child: _isCreatingAssignment
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    strokeWidth: 2,
-                  ),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text('إنشاء واجب'),
               ),
             ],
@@ -615,12 +740,16 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                             isDense: true,
                           ),
                           items: [
-                            DropdownMenuItem<int?>(value: null, child: Text('الكل')),
-                            ...List.generate(6, (i) => i + 1)
-                                .map((g) => DropdownMenuItem<int?>(
-                              value: g,
-                              child: Text('الصف $g'),
-                            )),
+                            DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('الكل'),
+                            ),
+                            ...List.generate(6, (i) => i + 1).map(
+                              (g) => DropdownMenuItem<int?>(
+                                value: g,
+                                child: Text('الصف $g'),
+                              ),
+                            ),
                           ],
                           onChanged: (v) {
                             setState(() {
@@ -642,12 +771,16 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                             isDense: true,
                           ),
                           items: [
-                            DropdownMenuItem<int?>(value: null, child: Text('الكل')),
-                            ...List.generate(10, (i) => i + 1)
-                                .map((c) => DropdownMenuItem<int?>(
-                              value: c,
-                              child: Text('الفصل $c'),
-                            )),
+                            DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('الكل'),
+                            ),
+                            ...List.generate(10, (i) => i + 1).map(
+                              (c) => DropdownMenuItem<int?>(
+                                value: c,
+                                child: Text('الفصل $c'),
+                              ),
+                            ),
                           ],
                           onChanged: (v) {
                             setState(() {
@@ -670,7 +803,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                             child: Checkbox(
                               value: _allVisibleSelected(),
                               visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               onChanged: (bool? value) {
                                 setState(() {
                                   if (value == true) {
@@ -703,36 +837,42 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                           ? const Center(child: CircularProgressIndicator())
                           : _visibleStudents.isEmpty
                           ? const Center(
-                        child: Text('لا توجد طلاب مطابقة للفلتر المحدد'),
-                      )
+                              child: Text('لا توجد طلاب مطابقة للفلتر المحدد'),
+                            )
                           : ListView.builder(
-                        itemCount: _visibleStudents.length,
-                        itemBuilder: (context, index) {
-                          User student = _visibleStudents[index];
-                          bool isSelected =
-                          _selectedStudentIds.contains(student.id);
+                              itemCount: _visibleStudents.length,
+                              itemBuilder: (context, index) {
+                                User student = _visibleStudents[index];
+                                bool isSelected = _selectedStudentIds.contains(
+                                  student.id,
+                                );
 
-                          return CheckboxListTile(
-                            title: Text(student.name),
-                            subtitle: Text(student.email),
-                            value: isSelected,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  if (!_selectedStudentIds
-                                      .contains(student.id)) {
-                                    _selectedStudentIds.add(student.id);
-                                    _selectedStudentNames.add(student.name);
-                                  }
-                                } else {
-                                  _selectedStudentIds.remove(student.id);
-                                  _selectedStudentNames.remove(student.name);
-                                }
-                              });
-                            },
-                          );
-                        },
-                      ),
+                                return CheckboxListTile(
+                                  title: Text(student.name),
+                                  subtitle: Text(student.email),
+                                  value: isSelected,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      if (value == true) {
+                                        if (!_selectedStudentIds.contains(
+                                          student.id,
+                                        )) {
+                                          _selectedStudentIds.add(student.id);
+                                          _selectedStudentNames.add(
+                                            student.name,
+                                          );
+                                        }
+                                      } else {
+                                        _selectedStudentIds.remove(student.id);
+                                        _selectedStudentNames.remove(
+                                          student.name,
+                                        );
+                                      }
+                                    });
+                                  },
+                                );
+                              },
+                            ),
                     ),
                   ),
                 ],
@@ -770,7 +910,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       child: Scaffold(
         appBar: CustomAppBar(
           title: ' أدوات المعلم',
-
+          color: Theme.of(context).colorScheme.primary,
           elevation: 0,
           bottom: TabBar(
             isScrollable: true,
@@ -801,9 +941,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? [Colors.grey.shade900, Colors.black]
-                      : [Colors.orange.shade50, Colors.white],
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer,
+                    Theme.of(context).colorScheme.surface,
+                  ],
                 ),
               ),
               child: Column(
@@ -815,85 +956,127 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       icon: const Icon(Icons.add),
                       label: const Text('إنشاء سؤال جديد'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: _customQuestions.isEmpty
-                        ? const Center(
-                      child: Text(
-                        'لا توجد أسئلة متاحة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                        textDirection: TextDirection.rtl,
-                      ),
-                    )
-                        : ListView.builder(
-                      itemCount: _customQuestions.length,
-                      itemBuilder: (context, index) {
-                        Question question = _customQuestions[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: ListTile(
-                            title: Text(
-                              question.question,
+                        ? Center(
+                            child: Text(
+                              'لا توجد أسئلة متاحة',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: question.type == QuestionType.customImage
-                                    ? Colors.blue
-                                    : null,
+                                fontSize: 16,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
                               ),
+                              textDirection: TextDirection.rtl,
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('الإجابة: ${question.correctAnswer}'),
-                                if (question.explanation != null)
-                                  Text(
-                                    'الشرح: ${question.explanation!}',
-                                    style: const TextStyle(fontStyle: FontStyle.italic),
-                                    textDirection: TextDirection.rtl,
-                                  ),
-                                Text(
-                                  'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  textDirection: TextDirection.rtl,
+                          )
+                        : ListView.builder(
+                            itemCount: _customQuestions.length,
+                            itemBuilder: (context, index) {
+                              Question question = _customQuestions[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('تأكيد الحذف'),
-                                    content: const Text('هل ترغب بحذف هذا السؤال؟'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('إلغاء')),
-                                      ElevatedButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('حذف')),
+                                child: ListTile(
+                                  title: Text(
+                                    question.question,
+                                    style: TextStyle(
+                                      color:
+                                          question.type ==
+                                              QuestionType.customImage
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : null,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'الإجابة: ${question.correctAnswer}',
+                                      ),
+                                      if (question.explanation != null)
+                                        Text(
+                                          'الشرح: ${question.explanation!}',
+                                          style: const TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                          textDirection: TextDirection.rtl,
+                                        ),
+                                      Text(
+                                        'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        textDirection: TextDirection.rtl,
+                                      ),
                                     ],
                                   ),
-                                );
-                                if (confirm == true) {
-                                  await _deleteQuestion(question);
-                                }
-                              },
-                            ),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Coming soon')),
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      Icons.delete,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (c) => AlertDialog(
+                                          title: const Text('تأكيد الحذف'),
+                                          content: const Text(
+                                            'هل ترغب بحذف هذا السؤال؟',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(c).pop(false),
+                                              child: const Text('إلغاء'),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.of(c).pop(true),
+                                              child: const Text('حذف'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await _deleteQuestion(question);
+                                      }
+                                    },
+                                  ),
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Coming soon'),
+                                      ),
+                                    );
+                                  },
+                                ),
                               );
                             },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -906,9 +1089,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? [Colors.grey.shade900, Colors.black]
-                      : [Colors.purple.shade50, Colors.white],
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer,
+                    Theme.of(context).colorScheme.surface,
+                  ],
                 ),
               ),
               child: Column(
@@ -920,68 +1104,98 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       icon: const Icon(Icons.assignment),
                       label: const Text('إنشاء الواجب'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: _assignments.isEmpty
-                        ? const Center(
-                      child: Text(
-                        'لا توجد واجبات متاحة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    )
-                        : ListView.builder(
-                      itemCount: _assignments.length,
-                      itemBuilder: (context, index) {
-                        CustomAssignment assignment = _assignments[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: ListTile(
-                            title: Text(
-                              assignment.title,
+                        ? Center(
+                            child: Text(
+                              'لا توجد واجبات متاحة',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: assignment.description != null ? Colors.purple : null,
+                                fontSize: 16,
+                                color: Colors.grey,
                               ),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('الاسئلة: ${assignment.questions.length}'),
-                                if (assignment.description != null)
-                                  Text(
-                                    assignment.description!,
-                                    style: const TextStyle(fontStyle: FontStyle.italic),
+                          )
+                        : ListView.builder(
+                            itemCount: _assignments.length,
+                            itemBuilder: (context, index) {
+                              CustomAssignment assignment = _assignments[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: ListTile(
+                                  title: Text(
+                                    assignment.title,
+                                    style: TextStyle(
+                                      color: assignment.description != null
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : null,
+                                    ),
                                   ),
-                              ],
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'delete') {
-                                  _deleteAssignment(assignment);
-                                } else if (value == 'edit') {
-                                  _showEditAssignmentDialog(assignment);
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Edit'),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'الاسئلة: ${assignment.questions.length}',
+                                      ),
+                                      if (assignment.description != null)
+                                        Text(
+                                          assignment.description!,
+                                          style: const TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  trailing: PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'delete') {
+                                        _deleteAssignment(assignment);
+                                      } else if (value == 'edit') {
+                                        _showEditAssignmentDialog(assignment);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Edit'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text(
+                                          'Delete',
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -993,9 +1207,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? [Colors.grey.shade900, Colors.black]
-                      : [Colors.green.shade50, Colors.white],
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer,
+                    Theme.of(context).colorScheme.surface,
+                  ],
                 ),
               ),
               child: FutureBuilder(
@@ -1008,30 +1223,38 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   List<User> students = snapshot.data as List<User>;
 
                   return students.isEmpty
-                      ? const Center(
-                    child: Text(
-                      'لا يوجد طلاب م��جلين',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                      textDirection: TextDirection.rtl,
-                    ),
-                  )
-                      : ListView.builder(
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      User student = students[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            child: Text(student.name[0].toUpperCase()),
+                      ? Center(
+                          child: Text(
+                            'لا يوجد طلاب م��جلين',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                            textDirection: TextDirection.rtl,
                           ),
-                          title: Text(student.name),
-                          subtitle: Text(student.email),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        ),
-                      );
-                    },
-                  );
+                        )
+                      : ListView.builder(
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            User student = students[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(student.name[0].toUpperCase()),
+                                ),
+                                title: Text(student.name),
+                                subtitle: Text(student.email),
+                                trailing: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                ),
+                              ),
+                            );
+                          },
+                        );
                 },
               ),
             ),
@@ -1043,63 +1266,73 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                      ? [Colors.grey.shade900, Colors.black]
-                      : [Colors.orange.shade50, Colors.white],
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer,
+                    Theme.of(context).colorScheme.surface,
+                  ],
                 ),
               ),
               child: _assignments.isEmpty
                   ? const Center(
-                child: Text(
-                  'لا توجد واجبات متاحة',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              )
+                      child: Text(
+                        'لا توجد واجبات متاحة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
                   : ListView.builder(
-                itemCount: _assignments.length,
-                itemBuilder: (context, index) {
-                  CustomAssignment assignment = _assignments[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ExpansionTile(
-                      title: Text(assignment.title),
-                      subtitle: Text('عدد الطلاب: ${assignment.assignedStudentIds.length}'),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      itemCount: _assignments.length,
+                      itemBuilder: (context, index) {
+                        CustomAssignment assignment = _assignments[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: ExpansionTile(
+                            title: Text(assignment.title),
+                            subtitle: Text(
+                              'عدد الطلاب: ${assignment.assignedStudentIds.length}',
+                            ),
                             children: [
-                              Text(
-                                'الطلاب المكلفين:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange.shade700,
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'الطلاب المكلفين:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...assignment.assignedStudentNames.map(
+                                      (name) => Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4.0,
+                                        ),
+                                        child: Text(
+                                          '• $name',
+                                          textDirection: TextDirection.rtl,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'عدد الأسئلة: ${assignment.questions.length}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                  ],
                                 ),
-                                textDirection: TextDirection.rtl,
-                              ),
-                              const SizedBox(height: 8),
-                              ...assignment.assignedStudentNames.map((name) =>
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                    child: Text('• $name', textDirection: TextDirection.rtl),
-                                  )
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'عدد الأسئلة: ${assignment.questions.length}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                textDirection: TextDirection.rtl,
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
@@ -1109,17 +1342,20 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
   void _deleteAssignment(CustomAssignment assignment) async {
     try {
-      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      UserProvider userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
       await userProvider.deleteAssignment(assignment.id);
 
       await _loadAssignments();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم حذف الواجب بنجاح!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تم حذف الواجب بنجاح!')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء حذف الواجب: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء حذف الواجب: $e')));
     }
   }
 
@@ -1165,8 +1401,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
-                const Text('Note: Student and question selection editing is coming soon!',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const Text(
+                  'Note: Student and question selection editing is coming soon!',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -1179,7 +1417,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               onPressed: () async {
                 if (_assignmentTitleController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter assignment title')),
+                    const SnackBar(
+                      content: Text('Please enter assignment title'),
+                    ),
                   );
                   return;
                 }
@@ -1189,7 +1429,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   await _loadAssignments();
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Assignment updated successfully!')),
+                    const SnackBar(
+                      content: Text('Assignment updated successfully!'),
+                    ),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
