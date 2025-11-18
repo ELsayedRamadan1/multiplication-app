@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../utils/arabic_numbers.dart';
 
 import '../models/assignment_model.dart';
 import '../models/question_model.dart';
@@ -43,6 +42,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
   int _totalQuestions = 0;
   int _currentQuestionIndex = 0;
   DateTime? _startedAt;
+  int? _selectedChoiceIndex;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   List<StudentAnswer> _answers = [];
@@ -84,7 +84,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'لقد أنهيت هذا الواجب سابقًا (${res.score}/${res.totalQuestions})',
+                    'لقد أنهيت هذا الواجب سابقًا (${formatNumber(res.score)}/${formatNumber(res.totalQuestions)})',
                   ),
                 ),
               );
@@ -179,7 +179,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
       // Record question result
       _questionResults.add(
         QuestionResult(
-          questionText: _currentQuestion!.question,
+          questionText: toArabicDigits(_currentQuestion!.question),
           correctAnswer: correct.toDouble(),
           userAnswer: answer,
           isCorrect: isCorrect,
@@ -207,6 +207,45 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
         }
       });
     }
+  }
+
+  // Handle multiple-choice answer selection
+  void _checkChoiceAnswer(int selectedIndex) {
+    if (_currentQuestion == null) return;
+
+    final correctIdx =
+        _currentQuestion!.correctChoiceIndex ??
+        _currentQuestion!.correctAnswer.toInt();
+    final isCorrect = selectedIndex == correctIdx;
+
+    // Record question result: store answer as index (double) to be compatible
+    _questionResults.add(
+      QuestionResult(
+        questionText: toArabicDigits(_currentQuestion!.question),
+        correctAnswer: correctIdx.toDouble(),
+        userAnswer: selectedIndex.toDouble(),
+        isCorrect: isCorrect,
+      ),
+    );
+
+    setState(() {
+      _isCorrect = isCorrect;
+      _totalQuestions = _questionResults.length;
+      if (isCorrect) _score++;
+    });
+
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      if (widget.assignment != null) {
+        if (_currentQuestionIndex < _assignmentQuestions.length - 1) {
+          _generateNewQuestion();
+        } else {
+          _finishQuiz();
+        }
+      } else {
+        _generateNewQuestion();
+      }
+    });
   }
 
   void _finishQuiz() async {
@@ -240,7 +279,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
             final q = _assignmentQuestions[i];
             resultsToSave.add(
               QuestionResult(
-                questionText: q.question,
+                questionText: toArabicDigits(q.question),
                 correctAnswer: q.correctAnswer.toDouble(),
                 userAnswer: 0.0,
                 isCorrect: false,
@@ -259,7 +298,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'تم إنهاء الواجب! نتيجتك: $_score/${_assignmentQuestions.length}',
+              'تم إنهاء الواجب! نتيجتك: ${formatNumber(_score)}/${formatNumber(_assignmentQuestions.length)}',
             ),
           ),
         );
@@ -280,7 +319,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'تم إنهاء الاختبار! نتيجتك: $_score/$_totalQuestions',
+              'تم إنهاء الاختبار! نتيجتك: ${formatNumber(_score)}/${formatNumber(_totalQuestions)}',
             ),
           ),
         );
@@ -383,79 +422,6 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
     );
   }
 
-  Widget _buildImageWidget(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final imageFile = File(imagePath);
-    final fileExists = imageFile.existsSync();
-
-    return Column(
-      children: [
-        Container(
-          height: 150,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.12),
-            ),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: fileExists
-                ? Image.file(
-                    imageFile,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.broken_image,
-                            size: 40,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : Container(
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 40,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 15),
-      ],
-    );
-  }
-
   Widget _buildAssignmentQuiz() {
     if (_currentQuestion == null) {
       return const Center(
@@ -493,7 +459,7 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'السؤال رقم ${_currentQuestionIndex + 1} من ${_assignmentQuestions.length}',
+                      'السؤال رقم ${toArabicDigits((_currentQuestionIndex + 1).toString())} من ${toArabicDigits(_assignmentQuestions.length.toString())}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(
@@ -549,9 +515,9 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                   ),
                   child: Column(
                     children: [
-                      _buildImageWidget(_currentQuestion!.imagePath),
+                      // image support removed; show question text directly
                       Text(
-                        _currentQuestion!.question,
+                        toArabicDigits(_currentQuestion!.question),
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -582,34 +548,62 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  labelText: 'إجابتك',
-                  labelStyle: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.8),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
+              if (_currentQuestion!.choices != null &&
+                  _currentQuestion!.choices!.isNotEmpty) ...[
+                Column(
+                  children: [
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemCount: _currentQuestion!.choices!.length,
+                      itemBuilder: (c, idx) {
+                        final choiceText = _currentQuestion!.choices![idx];
+                        return RadioListTile<int>(
+                          value: idx,
+                          groupValue: _selectedChoiceIndex,
+                          title: Text(choiceText),
+                          onChanged: (v) {
+                            setState(() {
+                              _selectedChoiceIndex = v;
+                            });
+                            if (v != null) _checkChoiceAnswer(v);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ] else ...[
+                TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    labelText: 'إجابتك',
+                    labelStyle: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.8),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                   ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onBackground,
                   ),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
                 ),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onBackground,
-                ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-              ),
+              ],
               const SizedBox(height: 16),
               InkWell(
                 onTap: _checkAnswer,
@@ -640,7 +634,10 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                     Text(
                       _isCorrect!
                           ? 'صحيح! +1 نقطة'
-                          : 'إجابة خاطئة: ${_currentQuestion!.correctAnswer}',
+                          : (_currentQuestion!.choices != null &&
+                                    _currentQuestion!.choices!.isNotEmpty
+                                ? 'إجابة خاطئة: ${_currentQuestion!.choices![_currentQuestion!.correctChoiceIndex ?? _currentQuestion!.correctAnswer.toInt()]}'
+                                : 'إجابة خاطئة: ${formatNumber(_currentQuestion!.correctAnswer)}'),
                       style: TextStyle(
                         color: _isCorrect!
                             ? Theme.of(context).colorScheme.secondary
@@ -721,10 +718,10 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                   ),
                   child: Column(
                     children: [
-                      _buildImageWidget(_currentQuestion!.imagePath),
+                      // image support removed; show question text directly
                       const SizedBox(height: 15),
                       Text(
-                        _currentQuestion!.question,
+                        toArabicDigits(_currentQuestion!.question),
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -748,16 +745,41 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  labelText: 'إجابتك',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              if (_currentQuestion != null &&
+                  _currentQuestion!.choices != null &&
+                  _currentQuestion!.choices!.isNotEmpty) ...[
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemCount: _currentQuestion!.choices!.length,
+                  itemBuilder: (c, idx) {
+                    final choiceText = _currentQuestion!.choices![idx];
+                    return RadioListTile<int>(
+                      value: idx,
+                      groupValue: _selectedChoiceIndex,
+                      title: Text(choiceText),
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedChoiceIndex = v;
+                        });
+                        if (v != null) _checkChoiceAnswer(v);
+                      },
+                    );
+                  },
                 ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-              ),
+              ] else ...[
+                TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    labelText: 'إجابتك',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
               const SizedBox(height: 16),
               InkWell(
                 onTap: _checkAnswer,
@@ -787,7 +809,10 @@ class _CustomQuizScreenState extends State<CustomQuizScreen>
                     Text(
                       _isCorrect!
                           ? 'صحيح! +1 نقطة'
-                          : 'إجابة خاطئة: ${_currentQuestion!.correctAnswer}',
+                          : (_currentQuestion!.choices != null &&
+                                    _currentQuestion!.choices!.isNotEmpty
+                                ? 'إجابة خاطئة: ${_currentQuestion!.choices![_currentQuestion!.correctChoiceIndex ?? _currentQuestion!.correctAnswer.toInt()]}'
+                                : 'إجابة خاطئة: ${_currentQuestion!.correctAnswer}'),
                       style: TextStyle(
                         color: _isCorrect!
                             ? Theme.of(context).colorScheme.secondary

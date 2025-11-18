@@ -1,4 +1,4 @@
-import 'question_model.dart';
+import 'package:multiplication_table_app/models/question_model.dart';
 
 class CustomAssignment {
   final String id;
@@ -11,6 +11,7 @@ class CustomAssignment {
   final String? description;
   final DateTime createdAt;
   final DateTime? dueDate;
+  final bool allowDecimalDivision;
   final bool isActive;
 
   CustomAssignment({
@@ -24,6 +25,7 @@ class CustomAssignment {
     this.description,
     DateTime? createdAt,
     this.dueDate,
+    this.allowDecimalDivision = false,
     this.isActive = true,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -39,6 +41,7 @@ class CustomAssignment {
       'description': description,
       'createdAt': createdAt.toIso8601String(),
       'dueDate': dueDate?.toIso8601String(),
+      'allowDecimalDivision': allowDecimalDivision,
       'isActive': isActive,
     };
   }
@@ -69,6 +72,7 @@ class CustomAssignment {
       dueDate: json['dueDate'] != null
           ? DateTime.tryParse(json['dueDate'])
           : null,
+      allowDecimalDivision: json['allowDecimalDivision'] ?? false,
       isActive: json['isActive'] ?? true,
     );
   }
@@ -88,6 +92,7 @@ class CustomAssignment {
     String? description,
     DateTime? createdAt,
     DateTime? dueDate,
+    bool? allowDecimalDivision,
     bool? isActive,
   }) {
     return CustomAssignment(
@@ -103,6 +108,7 @@ class CustomAssignment {
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       dueDate: dueDate ?? this.dueDate,
+      allowDecimalDivision: allowDecimalDivision ?? this.allowDecimalDivision,
       isActive: isActive ?? this.isActive,
     );
   }

@@ -13,7 +13,8 @@ class LoginScreen extends StatefulWidget {
   _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   late AnimationController _animationController;
@@ -49,7 +50,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     });
 
     try {
-      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      UserProvider userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
       await userProvider.login(
         _emailController.text.trim(),
         _passwordController.text,
@@ -112,7 +116,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         }
       }
 
-      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      UserProvider userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
       await userProvider.signInWithGoogle(
         role: role,
         school: studentData?['school'],
@@ -166,10 +173,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     prefixIcon: Icon(Icons.grade),
                   ),
                   items: List.generate(6, (i) => i + 1)
-                      .map((grade) => DropdownMenuItem(
-                            value: grade,
-                            child: Text('الصف $grade'),
-                          ))
+                      .map(
+                        (grade) => DropdownMenuItem(
+                          value: grade,
+                          child: Text('الصف $grade'),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedGrade = value!);
@@ -184,10 +193,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     prefixIcon: Icon(Icons.class_),
                   ),
                   items: List.generate(10, (i) => i + 1)
-                      .map((classNum) => DropdownMenuItem(
-                            value: classNum,
-                            child: Text('الفصل $classNum'),
-                          ))
+                      .map(
+                        (classNum) => DropdownMenuItem(
+                          value: classNum,
+                          child: Text('الفصل $classNum'),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedClass = value!);
@@ -232,13 +243,18 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     }
 
     try {
-      UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
+      UserProvider userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
       await userProvider.resetPassword(_emailController.text.trim());
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'),
+          content: Text(
+            'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -264,7 +280,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+            colors:
+                Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
                 ? [Colors.grey.shade900, Colors.black]
                 : [Colors.blue.shade50, Colors.white],
           ),
@@ -309,10 +326,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white,
-                              Colors.blue.shade50,
-                            ],
+                            colors: [Colors.white, Colors.blue.shade50],
                           ),
                           shape: BoxShape.circle,
                         ),
@@ -331,7 +345,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                        color:
+                            Provider.of<ThemeProvider>(context).themeMode ==
+                                ThemeMode.dark
                             ? Colors.white
                             : Colors.blue.shade800,
                       ),
@@ -342,7 +358,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       'تعلم • ممارسة • تميز',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                        color:
+                            Provider.of<ThemeProvider>(context).themeMode ==
+                                ThemeMode.dark
                             ? Colors.grey.shade400
                             : Colors.grey.shade600,
                       ),
@@ -357,7 +375,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         maxWidth: MediaQuery.of(context).size.width * 0.9,
                       ),
                       decoration: BoxDecoration(
-                        color: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                        color:
+                            Provider.of<ThemeProvider>(context).themeMode ==
+                                ThemeMode.dark
                             ? Colors.grey.shade800
                             : Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -371,10 +391,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         ],
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const Text(
-                            'مرحباً بعودتك!',
+                            'مرحباً بعودتك',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -401,7 +421,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                              fillColor:
+                                  Provider.of<ThemeProvider>(
+                                        context,
+                                      ).themeMode ==
+                                      ThemeMode.dark
                                   ? Colors.grey.shade700
                                   : Colors.grey.shade50,
                             ),
@@ -420,17 +444,25 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               prefixIcon: const Icon(Icons.lock),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                  _obscurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
                                 ),
                                 onPressed: () {
-                                  setState(() => _obscurePassword = !_obscurePassword);
+                                  setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  );
                                 },
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                              fillColor:
+                                  Provider.of<ThemeProvider>(
+                                        context,
+                                      ).themeMode ==
+                                      ThemeMode.dark
                                   ? Colors.grey.shade700
                                   : Colors.grey.shade50,
                             ),
@@ -441,7 +473,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
                           // Forgot Password
                           Align(
-                            alignment: Alignment.centerRight,
+                            alignment: Alignment.center,
                             child: TextButton(
                               onPressed: _resetPassword,
                               child: const Text('نسيت كلمة المرور؟'),
@@ -460,7 +492,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.error, color: Colors.red, size: 20),
+                                  const Icon(
+                                    Icons.error,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -487,20 +523,20 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               ),
                               child: _isLoading
                                   ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                   : const Text(
-                                'تسجيل الدخول',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                                      'تسجيل الدخول',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -508,15 +544,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           // Divider
                           Row(
                             children: [
-                              Expanded(child: Divider(color: Colors.grey.shade400)),
+                              Expanded(
+                                child: Divider(color: Colors.grey.shade400),
+                              ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 child: Text(
                                   'أو',
                                   style: TextStyle(color: Colors.grey.shade600),
                                 ),
                               ),
-                              Expanded(child: Divider(color: Colors.grey.shade400)),
+                              Expanded(
+                                child: Divider(color: Colors.grey.shade400),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -527,7 +569,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             height: 50,
                             child: OutlinedButton.icon(
                               onPressed: _isLoading ? null : _signInWithGoogle,
-                              icon:const Icon(
+                              icon: const Icon(
                                 Icons.g_mobiledata,
                                 size: 45,
                                 color: Colors.blue,
@@ -555,9 +597,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             children: [
                               Text(
                                 'ليس لديك حساب؟',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                ),
+                                style: TextStyle(color: Colors.grey.shade600),
                               ),
                               TextButton(
                                 onPressed: _showRegistrationDialog,

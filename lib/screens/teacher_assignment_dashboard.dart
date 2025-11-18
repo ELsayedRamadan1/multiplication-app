@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/assignment_model.dart';
 import '../services/user_provider.dart';
 import '../theme_provider.dart';
+import '../utils/arabic_numbers.dart';
 
 class TeacherAssignmentDashboard extends StatefulWidget {
   const TeacherAssignmentDashboard({super.key});
@@ -315,8 +316,24 @@ class _TeacherAssignmentDashboardState
                               children: [
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () =>
-                                        _showDetailedResults(assignment, []),
+                                    onPressed: () async {
+                                      // Load actual results before showing details
+                                      final userProvider =
+                                          Provider.of<UserProvider>(
+                                            context,
+                                            listen: false,
+                                          );
+                                      List<CustomQuizResult> results = [];
+                                      try {
+                                        results = await userProvider
+                                            .getAssignmentResults(
+                                              assignment.id,
+                                            );
+                                      } catch (_) {
+                                        results = [];
+                                      }
+                                      _showDetailedResults(assignment, results);
+                                    },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blue,
                                       padding: const EdgeInsets.symmetric(
@@ -396,7 +413,7 @@ class _TeacherAssignmentDashboardState
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${assignment.questions.indexOf(question) + 1}. ${question.question} (الإجابة: ${question.correctAnswer})',
+                    '${toArabicDigits((assignment.questions.indexOf(question) + 1).toString())}. ${toArabicDigits(question.question)} (الإجابة: ${formatNumber(question.correctAnswer)})',
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
@@ -422,17 +439,39 @@ class _TeacherAssignmentDashboardState
                         result.studentName,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      ...result.questionResults.map(
-                        (qResult) => Text(
-                          'س${result.questionResults.indexOf(qResult) + 1}: ${qResult.userAnswer} (${qResult.isCorrect ? '✓' : '✗'})',
+                      ...result.questionResults.asMap().entries.map((entry) {
+                        final qIndex = entry.key;
+                        final qResult = entry.value;
+                        String ansText;
+                        if (assignment.questions.length > qIndex &&
+                            assignment.questions[qIndex].choices != null) {
+                          final q = assignment.questions[qIndex];
+                          final uidx = qResult.userAnswer.toInt();
+                          final cidx =
+                              q.correctChoiceIndex ??
+                              qResult.correctAnswer.toInt();
+                          final uText = (uidx >= 0 && uidx < q.choices!.length)
+                              ? q.choices![uidx]
+                              : qResult.userAnswer.toString();
+                          final cText = (cidx >= 0 && cidx < q.choices!.length)
+                              ? q.choices![cidx]
+                              : qResult.correctAnswer.toString();
+                          ansText =
+                              '${uText} (${qResult.isCorrect ? '✓' : '✗'}) — الصحيح: $cText';
+                        } else {
+                          ansText =
+                              '${qResult.userAnswer} (${qResult.isCorrect ? '✓' : '✗'}) — الصحيح: ${qResult.correctAnswer}';
+                        }
+                        return Text(
+                          'س${toArabicDigits((qIndex + 1).toString())}: ${toArabicDigits(ansText)}',
                           style: TextStyle(
                             fontSize: 12,
                             color: qResult.isCorrect
                                 ? Colors.green
                                 : Colors.red,
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                     ],
                   ),
                 ),

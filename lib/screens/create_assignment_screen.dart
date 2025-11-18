@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 import '../models/assignment_model.dart';
 import '../models/question_model.dart';
 import '../models/user_model.dart';
@@ -27,8 +25,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final TextEditingController _assignmentDescriptionController =
       TextEditingController();
   QuestionType _selectedType = QuestionType.customText;
-  XFile? _selectedImage;
-  final ImagePicker _imagePicker = ImagePicker();
   List<Question> _customQuestions = [];
   List<CustomAssignment> _assignments = [];
   final List<String> _selectedStudentIds = [];
@@ -50,26 +46,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     _loadAssignments();
   }
 
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 600,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        setState(() {
-          _selectedImage = image;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error selecting image: $e')));
-    }
-  }
 
   Future<void> _loadAssignments() async {
     UserProvider userProvider = Provider.of<UserProvider>(
@@ -119,11 +95,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: QuestionType.customText,
-                        child: Text(' نصي'),
-                      ),
-                      DropdownMenuItem(
-                        value: QuestionType.customImage,
-                        child: Text('صورة '),
+                        child: Text('نصي'),
                       ),
                     ],
                     onChanged: (value) {
@@ -164,63 +136,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     ),
                     maxLines: 2,
                   ),
-                  if (_selectedType == QuestionType.customImage) ...[
-                    const SizedBox(height: 16),
-                    if (_selectedImage != null) ...[
-                      Container(
-                        height: 150,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.file(
-                                File(_selectedImage!.path),
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Positioned(
-                              top: 5,
-                              right: 5,
-                              child: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedImage = null;
-                                  });
-                                },
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.red,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: Colors.white.withAlpha(
-                                    204,
-                                  ), // ~0.8 opacity
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        await _pickImage();
-                        setState(() {}); // Refresh dialog state
-                      },
-                      icon: const Icon(Icons.image),
-                      label: Text(
-                        _selectedImage != null ? 'تغيير الصورة' : 'اختر صورة',
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -286,33 +201,13 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     answer = double.parse(_answerController.text);
                   }
 
-                  Question newQuestion;
-                  if (_selectedType == QuestionType.customText) {
-                    newQuestion = Question.customText(
-                      _questionController.text,
-                      answer,
-                      explanation: _explanationController.text.isEmpty
-                          ? null
-                          : _explanationController.text,
-                    );
-                  } else {
-                    if (_selectedImage == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('الرجاء اختيار صورة للأسئلة البصرية'),
-                        ),
-                      );
-                      return;
-                    }
-                    newQuestion = Question.customImage(
-                      _questionController.text,
-                      answer,
-                      _selectedImage!.path,
-                      explanation: _explanationController.text.isEmpty
-                          ? null
-                          : _explanationController.text,
-                    );
-                  }
+                  final newQuestion = Question.customText(
+                    _questionController.text,
+                    answer,
+                    explanation: _explanationController.text.isEmpty
+                        ? null
+                        : _explanationController.text,
+                  );
 
                   await _questionService.saveCustomQuestion(newQuestion);
                   await _loadQuestions();
@@ -321,7 +216,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   _questionController.clear();
                   _answerController.clear();
                   _explanationController.clear();
-                  _selectedImage = null;
 
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1000,7 +894,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                     style: TextStyle(
                                       color:
                                           question.type ==
-                                              QuestionType.customImage
+                                              QuestionType.multipleChoice
                                           ? Theme.of(
                                               context,
                                             ).colorScheme.primary
@@ -1023,7 +917,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                                           textDirection: TextDirection.rtl,
                                         ),
                                       Text(
-                                        'نوع السؤال: ${question.type == QuestionType.customText ? 'نصي' : 'صورة'}',
+                                        'نوع السؤال: ${question.choices != null && question.choices!.isNotEmpty ? 'اختيارات' : (question.type == QuestionType.customText ? 'نصي' : (question.type == QuestionType.addition ? '+ جمع' : question.type == QuestionType.subtraction ? '- طرح' : question.type == QuestionType.multiplication ? '× ضرب' : '÷ قسمة'))}',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey.shade600,

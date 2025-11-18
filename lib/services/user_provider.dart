@@ -255,6 +255,7 @@ class UserProvider extends ChangeNotifier {
     required List<String> assignedStudentNames,
     String? description,
     DateTime? dueDate,
+    bool allowDecimalDivision = false,
   }) async {
     if (!isTeacher || _currentUser == null) {
       throw Exception('فقط المعلمون يمكنهم إنشاء المهام');
@@ -281,6 +282,7 @@ class UserProvider extends ChangeNotifier {
       title: title,
       description: description,
       dueDate: dueDate,
+      allowDecimalDivision: allowDecimalDivision,
     );
 
     try {
@@ -341,6 +343,7 @@ class UserProvider extends ChangeNotifier {
       studentName: _currentUser!.name,
       questionResults: questionResults,
       startedAt: startTime,
+      completedAt: DateTime.now(),
       score: score,
       totalQuestions: questionResults.length,
     );

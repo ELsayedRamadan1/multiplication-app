@@ -1,3 +1,4 @@
+import '../utils/arabic_numbers.dart';
 
 enum QuestionType {
   addition,
@@ -5,15 +6,10 @@ enum QuestionType {
   multiplication,
   division,
   customText,
-  customImage,
+  multipleChoice,
 }
 
-enum OperationType {
-  addition,
-  subtraction,
-  multiplication,
-  division,
-}
+enum OperationType { addition, subtraction, multiplication, division }
 
 class Question {
   final String id;
@@ -24,7 +20,8 @@ class Question {
   final OperationType operation;
   final QuestionType type;
   final String? explanation;
-  final String? imagePath;
+  final List<String>? choices;
+  final int? correctChoiceIndex;
 
   Question({
     required this.id,
@@ -35,31 +32,46 @@ class Question {
     required this.operation,
     required this.type,
     this.explanation,
-    this.imagePath,
+    this.choices,
+    this.correctChoiceIndex,
   });
 
   // Factory constructor for arithmetic questions
-  factory Question.arithmetic(int a, int b, OperationType operation) {
-    final question = '${a} ${_getOperationSymbol(operation)} ${b} = ؟';
-    final answer = _calculateAnswer(a, b, operation);
+  /// If [roundDecimals] is provided and the operation is division,
+  /// the correct answer will be rounded to that many decimal places.
+  factory Question.arithmetic(
+    int a,
+    int b,
+    OperationType operation, {
+    int? roundDecimals,
+  }) {
+    final qText =
+        '${toArabicDigits(a.toString())} ${_getOperationSymbol(operation)} ${toArabicDigits(b.toString())} = ؟';
+    final answer = _calculateAnswer(a, b, operation, roundDecimals: roundDecimals);
     return Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      question: question,
+      question: qText,
       correctAnswer: answer,
       a: a,
       b: b,
       operation: operation,
       type: _toQuestionType(operation),
+      choices: null,
+      correctChoiceIndex: null,
     );
   }
 
   // For backward compatibility
-  factory Question.multiplication(int a, int b) {
-    return Question.arithmetic(a, b, OperationType.multiplication);
-  }
+  factory Question.multiplication(int a, int b) => Question.arithmetic(a, b, OperationType.multiplication);
 
   // Factory constructor for custom text questions
-  factory Question.customText(String question, double answer, {String? explanation}) {
+  factory Question.customText(
+    String question,
+    double answer, {
+    String? explanation,
+    List<String>? choices,
+    int? correctChoiceIndex,
+  }) {
     return Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       question: question,
@@ -67,19 +79,32 @@ class Question {
       operation: OperationType.addition, // Default operation
       type: QuestionType.customText,
       explanation: explanation,
+      choices: choices,
+      correctChoiceIndex: correctChoiceIndex,
     );
   }
 
-  // Factory constructor for custom image questions
-  factory Question.customImage(String question, double answer, String imagePath, {String? explanation}) {
+  // Factory for multiple-choice questions
+  factory Question.multipleChoice(
+    String question,
+    List<String> choices,
+    int correctIndex, {
+    String? explanation,
+  }) {
+    double parsedAnswer = 0;
+    if (correctIndex >= 0 && correctIndex < choices.length) {
+      final p = double.tryParse(choices[correctIndex].replaceAll(',', '.'));
+      if (p != null) parsedAnswer = p;
+    }
     return Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       question: question,
-      correctAnswer: answer,
-      operation: OperationType.addition, // Default operation
-      type: QuestionType.customImage,
+      correctAnswer: parsedAnswer,
+      operation: OperationType.addition,
+      type: QuestionType.multipleChoice,
       explanation: explanation,
-      imagePath: imagePath,
+      choices: choices,
+      correctChoiceIndex: correctIndex,
     );
   }
 
@@ -94,52 +119,68 @@ class Question {
       'operation': operation.index,
       'type': type.index,
       'explanation': explanation,
-      'imagePath': imagePath,
+      'choices': choices,
+      'correctChoiceIndex': correctChoiceIndex,
     };
   }
 
   // Create from map for JSON deserialization
   factory Question.fromJson(Map<String, dynamic> json) {
+    List<String>? loadedChoices;
+    if (json['choices'] != null) {
+      try {
+        loadedChoices = List<String>.from(json['choices']);
+      } catch (_) {
+        loadedChoices = null;
+      }
+    }
     return Question(
       id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      question: json['question'],
-      correctAnswer: (json['correctAnswer'] as num).toDouble(),
+      question: json['question'] ?? '',
+      correctAnswer: (json['correctAnswer'] as num?)?.toDouble() ?? 0.0,
       a: json['a'],
       b: json['b'],
       operation: OperationType.values[json['operation'] ?? OperationType.multiplication.index],
       type: QuestionType.values[json['type'] ?? QuestionType.multiplication.index],
       explanation: json['explanation'],
-      imagePath: json['imagePath'],
+      choices: loadedChoices,
+      correctChoiceIndex: json['correctChoiceIndex'],
     );
   }
 
   // Helper method to calculate answer
-  static double _calculateAnswer(int a, int b, OperationType operation) {
+  static double _calculateAnswer(int a, int b, OperationType operation, {int? roundDecimals}) {
     switch (operation) {
-      case OperationType.addition: return (a + b).toDouble();
-      case OperationType.subtraction: return (a - b).toDouble();
-      case OperationType.multiplication: return (a * b).toDouble();
-      case OperationType.division: return (a / b).toDouble();
+      case OperationType.addition:
+        return (a + b).toDouble();
+      case OperationType.subtraction:
+        return (a - b).toDouble();
+      case OperationType.multiplication:
+        return (a * b).toDouble();
+      case OperationType.division:
+        double val = b == 0 ? 0.0 : (a / b).toDouble();
+        if (roundDecimals != null) return double.parse(val.toStringAsFixed(roundDecimals));
+        return val;
     }
   }
 
   // Helper method to get operation symbol
   static String _getOperationSymbol(OperationType operation) {
     switch (operation) {
-      case OperationType.addition: return '+';
-      case OperationType.subtraction: return '-';
-      case OperationType.multiplication: return '×';
-      case OperationType.division: return '÷';
+      case OperationType.addition:
+        return '+';
+      case OperationType.subtraction:
+        return '-';
+      case OperationType.multiplication:
+        return '×';
+      case OperationType.division:
+        return '÷';
     }
   }
 
   // Helper method to convert OperationType to QuestionType
-  static QuestionType _toQuestionType(OperationType operation) {
-    return QuestionType.values[operation.index];
-  }
+  static QuestionType _toQuestionType(OperationType operation) => QuestionType.values[operation.index];
 
   @override
-  String toString() {
-    return 'Question{id: $id, question: $question, correctAnswer: $correctAnswer, type: $type}';
-  }
+  String toString() => 'Question{id: $id, question: $question, correctAnswer: $correctAnswer, type: $type, choices: $choices, correctIdx: $correctChoiceIndex}';
 }

@@ -7,8 +7,11 @@ import 'package:provider/provider.dart';
 import '../models/student_data_model.dart' show StudentData;
 import '../models/user_model.dart';
 import '../services/student_service.dart';
+import '../services/assignment_service.dart';
+import '../utils/arabic_numbers.dart';
 import '../services/user_provider.dart';
-import '../models/assignment_model.dart' show CustomAssignment, CustomQuizResult;
+import '../models/assignment_model.dart'
+    show CustomAssignment, CustomQuizResult;
 import '../widgets/custom_app_bar.dart';
 
 class TeacherDashboard extends StatefulWidget {
@@ -73,20 +76,19 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
     for (final assignment in teacherAssignments) {
       try {
-        final sub = userProvider.streamAssignmentResults(assignment.id).listen(
-          (results) {
-            _latestResultsByAssignment[assignment.id] = results;
-            final Map<String, bool> completed = {};
-            for (final lst in _latestResultsByAssignment.values) {
-              for (final r in lst) {
-                completed[r.studentId] = true;
-              }
+        final sub = userProvider.streamAssignmentResults(assignment.id).listen((
+          results,
+        ) {
+          _latestResultsByAssignment[assignment.id] = results;
+          final Map<String, bool> completed = {};
+          for (final lst in _latestResultsByAssignment.values) {
+            for (final r in lst) {
+              completed[r.studentId] = true;
             }
-            if (!mounted) return;
-            setState(() => _studentCompleted = completed);
-          },
-          onError: (_) {},
-        );
+          }
+          if (!mounted) return;
+          setState(() => _studentCompleted = completed);
+        }, onError: (_) {});
         _resultsSubs.add(sub);
       } catch (_) {}
     }
@@ -103,10 +105,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   Widget _buildAvatar(User user, double radius) {
     if (user.avatarPath != null && user.avatarPath!.isNotEmpty) {
       if (user.avatarPath!.startsWith('http')) {
-        return CircleAvatar(radius: radius, backgroundImage: NetworkImage(user.avatarPath!));
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: NetworkImage(user.avatarPath!),
+        );
       } else {
         try {
-          return CircleAvatar(radius: radius, backgroundImage: FileImage(File(user.avatarPath!)));
+          return CircleAvatar(
+            radius: radius,
+            backgroundImage: FileImage(File(user.avatarPath!)),
+          );
         } catch (_) {}
       }
     }
@@ -114,15 +122,25 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     String initials = 'طالب';
     if (user.name.isNotEmpty) {
       final parts = user.name.split(' ');
-      if (parts.length >= 2) initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-      else initials = user.name.substring(0, math.min(2, user.name.length)).toUpperCase();
+      if (parts.length >= 2)
+        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      else
+        initials = user.name
+            .substring(0, math.min(2, user.name.length))
+            .toUpperCase();
     }
 
     final colorScheme = Theme.of(context).colorScheme;
     return CircleAvatar(
       radius: radius,
       backgroundColor: colorScheme.primary,
-      child: Text(initials, style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold)),
+      child: Text(
+        initials,
+        style: TextStyle(
+          color: colorScheme.onPrimary,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
@@ -146,12 +164,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     final hh = local.hour.toString().padLeft(2, '0');
     final mm = local.minute.toString().padLeft(2, '0');
     final ss = local.second.toString().padLeft(2, '0');
-    final off = local.timeZoneOffset;
-    final sign = off.isNegative ? '-' : '+';
-    final offH = off.inHours.abs().toString().padLeft(2, '0');
-    final offM = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
-    final tz = local.timeZoneName;
-    final formatted = '$y-$m-$d $hh:$mm:$ss (UTC$sign$offH:$offM $tz)';
+    // Simplified format without English timezone text in parentheses.
+    final formatted = '$y-$m-$d $hh:$mm:$ss';
     return _toArabicDigits(formatted);
   }
 
@@ -186,18 +200,24 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (r.startedAt != null) ...[
-                Text('Started (ISO): ${r.startedAt!.toUtc().toIso8601String()}'),
+                Text(
+                  'بداية (UTC ISO): ${toArabicDigits(r.startedAt!.toUtc().toIso8601String())}',
+                ),
                 const SizedBox(height: 6),
-                Text('Started (local): ${_formatDateTime(r.startedAt!)}'),
+                Text('بداية (محلي): ${_formatDateTime(r.startedAt!)}'),
                 const SizedBox(height: 8),
               ],
               if (r.completedAt != null) ...[
-                Text('Completed (ISO): ${r.completedAt!.toUtc().toIso8601String()}'),
+                Text(
+                  'انتهاء (UTC ISO): ${toArabicDigits(r.completedAt!.toUtc().toIso8601String())}',
+                ),
                 const SizedBox(height: 6),
-                Text('Completed (local): ${_formatDateTime(r.completedAt!)}'),
+                Text('انتهاء (محلي): ${_formatDateTime(r.completedAt!)}'),
                 const SizedBox(height: 8),
               ],
-              Text('Score: ${_toArabicDigits(r.score.toString())}/${_toArabicDigits(r.totalQuestions.toString())} (${_toArabicDigits(r.percentage.toStringAsFixed(0))}%)'),
+              Text(
+                'الدرجة: ${_formatNumber(r.score)}/${_formatNumber(r.totalQuestions)} (${_toArabicDigits(r.percentage.toStringAsFixed(0))}%)',
+              ),
               const SizedBox(height: 8),
               const Text('Raw JSON:'),
               const SizedBox(height: 6),
@@ -205,7 +225,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             ],
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إغلاق'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('إغلاق'),
+          ),
+        ],
       ),
     );
   }
@@ -214,7 +239,37 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final results = await userProvider.getAssignmentResults(assignment.id);
-      final Map<String, CustomQuizResult> resMap = {for (var r in results) r.studentId: r};
+      // If some results are missing startedAt, try to recover it from
+      // assignments/{assignmentId}/submissions/{studentId} where
+      // markAssignmentStarted writes the timestamp.
+      final assignmentService = AssignmentService();
+      for (int i = 0; i < results.length; i++) {
+        final r = results[i];
+        if (r.startedAt == null) {
+          try {
+            final started = await assignmentService.getSubmissionStarted(
+              assignment.id,
+              r.studentId,
+            );
+            if (started != null) {
+              // replace with a copy that includes startedAt
+              results[i] = CustomQuizResult(
+                assignmentId: r.assignmentId,
+                studentId: r.studentId,
+                studentName: r.studentName,
+                questionResults: r.questionResults,
+                completedAt: r.completedAt,
+                startedAt: started,
+                score: r.score,
+                totalQuestions: r.totalQuestions,
+              );
+            }
+          } catch (_) {}
+        }
+      }
+      final Map<String, CustomQuizResult> resMap = {
+        for (var r in results) r.studentId: r,
+      };
 
       showDialog(
         context: context,
@@ -334,31 +389,87 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                '${r.score}/${r.totalQuestions}  (${r.percentage.toStringAsFixed(0)}%)',
+                                                '${_formatNumber(r.score)}/${_formatNumber(r.totalQuestions)}  (${_toArabicDigits(r.percentage.toStringAsFixed(0))}%)',
                                               ),
                                               if (r.completedAt != null)
                                                 Text(
-                                                  'أنهى: ${r.completedAt!.toLocal().toString().split('.')[0]}',
+                                                  'أنهى: ${_formatDateTime(r.completedAt!)}',
                                                 ),
                                               if (r.startedAt != null &&
                                                   r.completedAt != null)
                                                 Text(
-                                                  'المدة: ${r.completedAt!.difference(r.startedAt!).inSeconds} ثانية',
+                                                  'المدة: ${_formatDurationHuman(r.completedAt!.difference(r.startedAt!))}',
+                                                )
+                                              else if (r.completedAt != null &&
+                                                  r.startedAt == null)
+                                                Text(
+                                                  'المدة: غير متاحة (لم يبدأ الطالب رسمياً)',
                                                 ),
                                             ],
                                           ),
                                     children: r == null
                                         ? []
-                                        : r.questionResults
-                                              .map(
-                                                (qr) => ListTile(
-                                                  title: Text(qr.questionText),
-                                                  subtitle: Text(
-                                                    'الإجابة: ${qr.userAnswer} — صحيح: ${qr.isCorrect}',
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(),
+                                        : r.questionResults.asMap().entries.map((
+                                            entry,
+                                          ) {
+                                            final idx = entry.key;
+                                            final qr = entry.value;
+                                            // Try to show choice text when available
+                                            String userText;
+                                            String correctText;
+                                            if (assignment.questions.length >
+                                                    idx &&
+                                                assignment
+                                                        .questions[idx]
+                                                        .choices !=
+                                                    null) {
+                                              final q =
+                                                  assignment.questions[idx];
+                                              final userIdx = qr.userAnswer
+                                                  .toInt();
+                                              final correctIdx =
+                                                  q.correctChoiceIndex ??
+                                                  qr.correctAnswer.toInt();
+                                              userText =
+                                                  (userIdx >= 0 &&
+                                                      q.choices!.length >
+                                                          userIdx)
+                                                  ? q.choices![userIdx]
+                                                  : _formatNumber(
+                                                      qr.userAnswer,
+                                                    );
+                                              correctText =
+                                                  (correctIdx >= 0 &&
+                                                      q.choices!.length >
+                                                          correctIdx)
+                                                  ? q.choices![correctIdx]
+                                                  : _formatNumber(
+                                                      qr.correctAnswer,
+                                                    );
+                                            } else {
+                                              userText = _formatNumber(
+                                                qr.userAnswer,
+                                              );
+                                              correctText = _formatNumber(
+                                                qr.correctAnswer,
+                                              );
+                                            }
+
+                                            return ListTile(
+                                              title: Text(qr.questionText),
+                                              subtitle: Text(
+                                                'الإجابة: $userText  —  الصحيح: $correctText',
+                                              ),
+                                              trailing: Icon(
+                                                qr.isCorrect
+                                                    ? Icons.check_circle
+                                                    : Icons.cancel,
+                                                color: qr.isCorrect
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                              ),
+                                            );
+                                          }).toList(),
                                   ),
                                 );
                               },

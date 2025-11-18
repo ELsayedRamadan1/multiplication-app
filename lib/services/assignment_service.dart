@@ -80,6 +80,28 @@ class AssignmentService {
     }
   }
 
+  /// Read the startedAt timestamp from assignments/{assignmentId}/submissions/{studentId}
+  /// Returns null if not found or on error.
+  Future<DateTime?> getSubmissionStarted(
+    String assignmentId,
+    String studentId,
+  ) async {
+    try {
+      final doc = await _firestore
+          .collection(_assignmentsCollection)
+          .doc(assignmentId)
+          .collection('submissions')
+          .doc(studentId)
+          .get();
+      if (!doc.exists) return null;
+      final data = doc.data();
+      if (data == null || data['startedAt'] == null) return null;
+      return DateTime.tryParse(data['startedAt']);
+    } catch (e) {
+      return null;
+    }
+  }
+
   // Marks completion and creates a lightweight result document
   Future<void> completeAssignment(
     String assignmentId,
@@ -88,12 +110,31 @@ class AssignmentService {
   ) async {
     try {
       final docId = '${assignmentId}_$studentId';
-      await _firestore.collection(_resultsCollection).doc(docId).set({
+      // Try to include 'startedAt' from submissions subcollection if present
+      String? startedAtStr;
+      try {
+        final subDoc = await _firestore
+            .collection(_assignmentsCollection)
+            .doc(assignmentId)
+            .collection('submissions')
+            .doc(studentId)
+            .get();
+        if (subDoc.exists) {
+          final d = subDoc.data();
+          if (d != null && d['startedAt'] != null)
+            startedAtStr = d['startedAt'];
+        }
+      } catch (_) {}
+
+      final payload = {
         'assignmentId': assignmentId,
         'studentId': studentId,
         'score': score,
         'completedAt': DateTime.now().toIso8601String(),
-      });
+      };
+      if (startedAtStr != null) payload['startedAt'] = startedAtStr;
+
+      await _firestore.collection(_resultsCollection).doc(docId).set(payload);
 
       // Notifications removed: do not create notifications on completion
     } catch (e) {

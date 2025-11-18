@@ -9,12 +9,13 @@ import 'screens/teacher_assignments_screen.dart';
 import 'services/user_provider.dart';
 import 'services/auth_service.dart';
 import 'theme_provider.dart';
+import 'services/questions_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize SharedPreferences and Firebase in parallel
-  final prefs = await SharedPreferences.getInstance();
+  await SharedPreferences.getInstance();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Create theme provider and wait for it to initialize
@@ -26,6 +27,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         Provider(create: (context) => AuthService()),
+        ChangeNotifierProvider(create: (_) => QuestionsProvider()),
         ChangeNotifierProxyProvider<AuthService, UserProvider>(
           create: (context) => UserProvider(
             authService: Provider.of<AuthService>(context, listen: false),
@@ -40,7 +42,7 @@ void main() async {
 }
 
 class ThemeInitializer extends StatelessWidget {
-  const ThemeInitializer({Key? key}) : super(key: key);
+  const ThemeInitializer({super.key});
 
   @override
   Widget build(BuildContext context) {
